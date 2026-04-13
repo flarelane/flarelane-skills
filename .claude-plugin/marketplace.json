@@ -1,0 +1,22 @@
+{
+  "name": "flarelane-skills",
+  "owner": {
+    "name": "FlareLane",
+    "url": "https://flarelane.com"
+  },
+  "metadata": {
+    "description": "FlareLane skills for AI agents — SDK and server API integration guidance, implementation workflows, and future product-specific workflows",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "flarelane-skills",
+      "description": "FlareLane integration skills for customer environments across web, Android, iOS, React Native, Flutter, and backend server APIs",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/flarelane-sdk-integration"
+      ]
+    }
+  ]
+}

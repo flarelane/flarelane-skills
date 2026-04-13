@@ -1,0 +1,4 @@
+interface:
+  display_name: "FlareLane Integration"
+  short_description: "Integrate FlareLane SDKs and server APIs"
+  default_prompt: "Use $flarelane-sdk-integration to add FlareLane SDK methods or server Track/Send API calls to this codebase."
