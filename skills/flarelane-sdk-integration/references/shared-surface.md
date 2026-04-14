@@ -29,27 +29,27 @@ This skill must remain usable after publication without access to this workspace
 
 Use these only when the product flow actually needs them.
 
-| Goal | Web | Android | iOS | React Native | Flutter |
-| --- | --- | --- | --- | --- | --- |
-| Log level | `setLogLevel(level)` | `setLogLevel(level)` | `setLogLevel(level:)` | `setLogLevel(level)` | `setLogLevel(level)` |
-| Subscription state | `getIsSubscribed(callback)` and `setIsSubscribed(isSubscribed, callback)` | `isSubscribed(context)`, `subscribe(context, fallbackToSettings, handler)`, `unsubscribe(context, handler)` | `isSubscribed(completion)`, `subscribe(fallbackToSettings, completion)`, `unsubscribe(completion)` | `isSubscribed(callback)`, `subscribe(fallbackToSettings, callback?)`, `unsubscribe(callback?)` | `isSubscribed()`, `subscribe(fallbackToSettings?, callback?)`, `unsubscribe(callback?)` |
-| Device ID lookup | `getDeviceId(callback)` | `getDeviceId(context)` | `getDeviceId()` | `getDeviceId()` | `getDeviceId()` |
-| Notification click handler | `setConvertedHandler(callback)` | `setNotificationClickedHandler(handler)` | `setNotificationClickedHandler(callback)` | `setNotificationClickedHandler(callback)` | `setNotificationClickedHandler(handler)` |
-| Foreground notification handler | none | `setNotificationForegroundReceivedHandler(handler)` | `setNotificationForegroundReceivedHandler(callback)` | `setNotificationForegroundReceivedHandler(callback)` | `setNotificationForegroundReceivedHandler(handler)` |
-| In-app action handler | `setInAppMessageActionHandler(handler)` | `setInAppMessageActionHandler(handler)` | `setInAppMessageActionHandler(callback)` | `setInAppMessageActionHandler(callback)` | `setInAppMessageActionHandler(handler)` |
-| User attributes | `setUserAttributes(attributes, useBeacon?)` | no public SDK method; use Track API | no public SDK method; use Track API | no public SDK method; use Track API | no public SDK method; use Track API |
+| Goal                            | Web                                                                       | Android                                                                                                     | iOS                                                                                                | React Native                                                                                   | Flutter                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Log level                       | `setLogLevel(level)`                                                      | `setLogLevel(level)`                                                                                        | `setLogLevel(level:)`                                                                              | `setLogLevel(level)`                                                                           | `setLogLevel(level)`                                                                    |
+| Subscription state              | `getIsSubscribed(callback)` and `setIsSubscribed(isSubscribed, callback)` | `isSubscribed(context)`, `subscribe(context, fallbackToSettings, handler)`, `unsubscribe(context, handler)` | `isSubscribed(completion)`, `subscribe(fallbackToSettings, completion)`, `unsubscribe(completion)` | `isSubscribed(callback)`, `subscribe(fallbackToSettings, callback?)`, `unsubscribe(callback?)` | `isSubscribed()`, `subscribe(fallbackToSettings?, callback?)`, `unsubscribe(callback?)` |
+| Device ID lookup                | `getDeviceId(callback)`                                                   | `getDeviceId(context)`                                                                                      | `getDeviceId()`                                                                                    | `getDeviceId()`                                                                                | `getDeviceId()`                                                                         |
+| Notification click handler      | `setConvertedHandler(callback)`                                           | `setNotificationClickedHandler(handler)`                                                                    | `setNotificationClickedHandler(callback)`                                                          | `setNotificationClickedHandler(callback)`                                                      | `setNotificationClickedHandler(handler)`                                                |
+| Foreground notification handler | none                                                                      | `setNotificationForegroundReceivedHandler(handler)`                                                         | `setNotificationForegroundReceivedHandler(callback)`                                               | `setNotificationForegroundReceivedHandler(callback)`                                           | `setNotificationForegroundReceivedHandler(handler)`                                     |
+| In-app action handler           | `setInAppMessageActionHandler(handler)`                                   | `setInAppMessageActionHandler(handler)`                                                                     | `setInAppMessageActionHandler(callback)`                                                           | `setInAppMessageActionHandler(callback)`                                                       | `setInAppMessageActionHandler(handler)`                                                 |
+| User attributes                 | `setUserAttributes(attributes, useBeacon?)`                               | no public SDK method; use Track API                                                                         | no public SDK method; use Track API                                                                | no public SDK method; use Track API                                                            | no public SDK method; use Track API                                                     |
 
 ## Server API surface
 
 Server APIs are backend REST calls, not SDK public methods.
 
-| Goal | API |
-| --- | --- |
-| Sync events, tags, and user attributes | Track API: `POST /v1/projects/{PROJECT_ID}/track` |
-| Send push notifications | Send Notifications API: `POST /v1/projects/{PROJECT_ID}/notifications` |
-| Send email | Send Email API: `POST /v1/projects/{PROJECT_ID}/emails` |
-| Send SMS | Send SMS API: `POST /v1/projects/{PROJECT_ID}/sms` |
-| Send Kakao Alimtalk | Send Kakao Alimtalk API: `POST /v1/projects/{PROJECT_ID}/alimtalk` |
+| Goal                                   | API                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| Sync events, tags, and user attributes | Track API: `POST /v1/projects/{PROJECT_ID}/track`                      |
+| Send push notifications                | Send Notifications API: `POST /v1/projects/{PROJECT_ID}/notifications` |
+| Send email                             | Send Email API: `POST /v1/projects/{PROJECT_ID}/emails`                |
+| Send SMS                               | Send SMS API: `POST /v1/projects/{PROJECT_ID}/sms`                     |
+| Send Kakao Alimtalk                    | Send Kakao Alimtalk API: `POST /v1/projects/{PROJECT_ID}/alimtalk`     |
 
 Server API credentials:
 

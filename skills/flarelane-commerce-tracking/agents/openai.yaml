@@ -1,0 +1,4 @@
+interface:
+  display_name: "FlareLane Commerce Tracking"
+  short_description: "Integrate standard commerce events, tags, and user attributes"
+  default_prompt: "Use $flarelane-commerce-tracking to audit this commerce codebase, ensure baseline FlareLane integration exists, and wire the standard commerce events, tags, and supported user attributes."

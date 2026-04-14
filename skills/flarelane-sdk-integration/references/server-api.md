@@ -27,13 +27,13 @@ Server API is not a client SDK public method surface. It belongs in backend serv
 
 ## API Surface
 
-| Goal | Method and path | Rate limit | Required core fields |
-| --- | --- | --- | --- |
-| Track events, tags, user attributes | `POST /v1/projects/{PROJECT_ID}/track` | 100 req / 1 sec | at least one of `events`, `tags`, or `userAttributes` |
-| Send push notification | `POST /v1/projects/{PROJECT_ID}/notifications` | 5 req / 1 sec | `targetType`, `targetIds`, and either `body` or `templateId` |
-| Send email | `POST /v1/projects/{PROJECT_ID}/emails` | 5 req / 1 sec | `targetType`, `targetIds`, `senderEmail`, `title`, `templateId` |
-| Send SMS | `POST /v1/projects/{PROJECT_ID}/sms` | 5 req / 1 sec | `targetType`, `targetIds`, `isAdvertisement`, `body` |
-| Send Kakao Alimtalk | `POST /v1/projects/{PROJECT_ID}/alimtalk` | 5 req / 1 sec | `targetType`, `targetIds`, `templateId` |
+| Goal                                | Method and path                                | Rate limit      | Required core fields                                            |
+| ----------------------------------- | ---------------------------------------------- | --------------- | --------------------------------------------------------------- |
+| Track events, tags, user attributes | `POST /v1/projects/{PROJECT_ID}/track`         | 100 req / 1 sec | at least one of `events`, `tags`, or `userAttributes`           |
+| Send push notification              | `POST /v1/projects/{PROJECT_ID}/notifications` | 5 req / 1 sec   | `targetType`, `targetIds`, and either `body` or `templateId`    |
+| Send email                          | `POST /v1/projects/{PROJECT_ID}/emails`        | 5 req / 1 sec   | `targetType`, `targetIds`, `senderEmail`, `title`, `templateId` |
+| Send SMS                            | `POST /v1/projects/{PROJECT_ID}/sms`           | 5 req / 1 sec   | `targetType`, `targetIds`, `isAdvertisement`, `body`            |
+| Send Kakao Alimtalk                 | `POST /v1/projects/{PROJECT_ID}/alimtalk`      | 5 req / 1 sec   | `targetType`, `targetIds`, `templateId`                         |
 
 ## Track API
 

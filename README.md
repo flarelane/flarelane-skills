@@ -15,6 +15,7 @@ The structure is intentionally multi-skill friendly so more FlareLane skills can
 | Skill                       | Purpose                                                                                                                                 |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `flarelane-sdk-integration` | Integrate FlareLane SDK public methods and server Track/Send APIs into web, Android, iOS, React Native, Flutter, and backend codebases. |
+| `flarelane-commerce-tracking` | Audit commerce codebases, ensure baseline FlareLane setup exists, and wire standard commerce events, stable tags, and supported user attributes. |
 
 ## Repository Layout
 

@@ -1,13 +1,13 @@
 ---
 name: flarelane-sdk-integration
-description: Integrate FlareLane into existing web, Android, iOS, React Native, Flutter, or backend codebases. Use when Codex needs to add, repair, or review FlareLane client SDK integration, server Track API sync, or server Send APIs for push, email, SMS, and Kakao Alimtalk; wire public SDK methods such as initialize, setUserId, setTags, trackEvent, displayInApp, subscribe/unsubscribe, log-level setup, device ID lookup, notification click or foreground handlers, user attributes, or place FlareLane code in the correct lifecycle files such as service workers, Application/AppDelegate, notification delegates, notification service extensions, API clients, or worker jobs.
+description: Integrate FlareLane into existing web, Android, iOS, React Native, Flutter, or backend codebases. Use when Codex needs to add, repair, or review FlareLane client SDK integration, server Track API sync, or server Send APIs for push, email, SMS, and Kakao Alimtalk; wire public SDK methods such as initialize, setUserId, setTags, trackEvent, displayInApp, subscribe/unsubscribe, log-level setup, device ID lookup, notification click or foreground handlers, user attributes, or place FlareLane code in the correct lifecycle files such as service workers, Application/AppDelegate, notification delegates, notification service extensions, API clients, or worker jobs. Recommended install: npx skills add flarelane/flarelane-skills.
 ---
 
 # FlareLane Integration
 
 ## Overview
 
-Use this skill to integrate FlareLane into a real product codebase without scattering SDK calls or API requests everywhere. Detect the target surface from the repo, read the shared reference plus one target-specific reference, then make the smallest architecture-consistent change that wires the requested SDK public methods or server API calls. The skill should remain deployable as-is, without depending on local workspace files or stable official-doc URLs.
+Use this skill to integrate or review FlareLane work in a real product codebase without scattering SDK calls or API requests everywhere. Detect the target surface from the repo, read the shared reference plus one target-specific reference, then make the smallest architecture-consistent change that wires the requested SDK public methods or server API calls. Prefer the least code that cleanly satisfies the request. Avoid speculative abstractions, new layers, or broad cleanup unless the target codebase already depends on them or the request truly needs them. When tags, events, or user data already flow through another analytics tool in the repo, inspect that path first and reuse the same stable business values when FlareLane semantics match. The skill should remain deployable as-is, without depending on local workspace files or stable official-doc URLs.
 
 ## Workflow
 
@@ -18,6 +18,8 @@ Use this skill to integrate FlareLane into a real product codebase without scatt
    - React Native: `react-native` dependency plus `android/` and `ios/`.
    - Flutter: `pubspec.yaml`, `lib/main.dart`, `android/`, `ios/`.
    - Server API: backend package manifests, environment config, API client modules, message or notification services, queue or worker jobs, and tests.
+   - For `setUserId`, `setTags`, `trackEvent`, or user-attribute work, also detect any existing analytics wrapper, user-property sync, or event bus before placing new FlareLane calls.
+   - Trace stable domain values behind those existing payloads instead of copying screen-local derived values or vendor-specific transformed objects.
    - If the repo contains multiple platforms, ask which one to change only when the request is ambiguous.
 
 2. Load the right references.
@@ -46,6 +48,7 @@ Use this skill to integrate FlareLane into a real product codebase without scatt
      - permission prompt timing
      - login/logout points for `setUserId`
      - tag and event source fields
+     - which existing analytics contract should win if multiple tools describe the same business signal differently
      - `displayInApp` group name and trigger point
      - web service worker path or root URL
      - iOS extension name or App Group when not discoverable
@@ -53,10 +56,13 @@ Use this skill to integrate FlareLane into a real product codebase without scatt
    - Ask one blocking question at a time.
    - When presenting options, explain pros and cons briefly.
 
-4. Prefer a thin FlareLane adapter over scattered direct calls.
-   - Use a small wrapper, service, or integration module if the codebase already has a service or data layer.
+4. Prefer the thinnest viable integration shape.
+   - Start from the smallest code change that satisfies the request and fits the target repo.
+   - Use a small wrapper, service, or integration module only if the codebase already has a service or data layer, or if it prevents real duplication.
    - Put initialization in the platform-correct lifecycle location.
-   - Avoid direct SDK calls from random screens when a shared module is feasible.
+   - Avoid direct SDK calls from random screens when a shared module is already the natural integration point.
+   - If another analytics wrapper already dispatches the same tag, event, or identify flow, extend that existing dispatch point before creating a second parallel path.
+   - Do not add new hooks, managers, factories, config layers, or helper files just to make the code feel more "architected".
    - If the app is tiny and a wrapper adds ceremony without value, keep the integration direct and minimal.
 
 5. Implement only the requested surface by default.
@@ -65,15 +71,26 @@ Use this skill to integrate FlareLane into a real product codebase without scatt
    - If the request asks for other public methods, use the platform reference for `setLogLevel`, subscribe state methods, device ID lookup, click or foreground handlers, in-app action handlers, or web `setUserAttributes`.
    - Do not invent `setUserAttributes` on mobile SDKs. If the target is Android, iOS, React Native, or Flutter, prefer the server Track API for user profile synchronization unless that SDK exposes a matching public method in the target version.
    - Add `subscribe`, `unsubscribe`, click handlers, foreground handlers, in-app action handlers, service extensions, server send jobs, or advanced web loader patterns only when the platform or request requires them.
+   - Do not preemptively add extra abstractions, fallback flows, instrumentation, caching, retries, feature flags, or refactors that were not requested.
    - Do not refactor unrelated code.
 
 6. Verify from both code paths and FlareLane behavior.
    - Confirm initialization runs once.
    - Confirm a device can register.
    - Confirm user ID, tags, and events change as expected.
+   - Confirm reused values from other analytics tools still come from authoritative repo state and do not duplicate FlareLane defaults or vendor-reserved fields.
    - Confirm `displayInApp` is called from a realistic screen or action, not only from temporary debug code.
    - For server APIs, confirm tokens stay server-side, non-2xx responses are handled, and send retries are idempotent when the product can retry.
    - Use the checklist in [shared-surface](references/shared-surface.md) before finishing.
+
+7. Review the work against this skill before finishing.
+   - Check whether the diff is the smallest change that satisfies the request.
+   - Check whether any new wrapper, file, or abstraction is justified by existing architecture or real duplication.
+   - Check whether FlareLane code was placed in the correct lifecycle or integration point for the platform.
+   - Check whether the change added only the requested surface, without speculative extras.
+   - Check whether the verification covers the requested product behavior, not only compile success.
+   - If the task is a review, use these checks as the rubric and call out which rules were met or violated.
+   - If any answer is "no", simplify the change before finalizing.
 
 ## Decision Points
 
@@ -134,5 +151,7 @@ In the final response, summarize:
 
 - where FlareLane was initialized
 - where the public SDK methods or server API calls are made from
+- which existing analytics values were reused, renamed, or intentionally ignored
 - what questions were answered during integration
 - how to verify device registration, tags, events, in-app display, and server API delivery when applicable
+- how the final change stayed minimal and whether it passed the skill review checklist
