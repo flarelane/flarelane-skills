@@ -6,10 +6,12 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 
 ## Install contract
 
-- CocoaPods package: `FlareLane`
-- Resolve the latest published CocoaPods version at integration time before editing `Podfile`
-- If the target repo already pins `FlareLane` or already has a `Podfile.lock`, keep that resolved version unless the user explicitly asks to upgrade or the needed API is unavailable
-- If the app uses a Notification Service Extension, add `FlareLane` to both the main target and the extension target
+- Two supported install paths; match whichever the target repo already uses:
+  - CocoaPods: package `FlareLane` (`pod 'FlareLane'`).
+  - Swift Package Manager: `https://github.com/flarelane/FlareLane-iOS-SDK`, product `FlareLane` for the main target and product `FlareLaneExtension` for a Notification Service Extension target.
+- Resolve the latest published version at integration time before editing `Podfile` or `Package.swift`
+- If the target repo already pins `FlareLane` or already has a `Podfile.lock`/`Package.resolved`, keep that resolved version unless the user explicitly asks to upgrade or the needed API is unavailable
+- If the app uses a Notification Service Extension, add FlareLane to both the main target and the extension target (CocoaPods: `pod 'FlareLane'` in the extension target too; SPM: the `FlareLaneExtension` product)
 
 ## Public methods used on iOS
 
@@ -19,7 +21,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - Set tags: `setTags(tags:)`
 - Track event: `trackEvent(type, data:)`
 - Show in-app: `displayInApp(group:, data:)`
-- User attributes: no public iOS SDK method; use the [server Track API](server-api.md)
+- User attributes: `setUserAttributes(attributes:)` in SDK `1.10.0+`; on older versions use the [server Track API](server-api.md). Verify against the installed version.
 - Permission surface: `isSubscribed(completion)`, `subscribe(fallbackToSettings, completion)`, and `unsubscribe(completion)`
 - Notification and in-app handlers: `setNotificationClickedHandler(callback)`, `setNotificationForegroundReceivedHandler(callback)`, and `setInAppMessageActionHandler(callback)`
 - Device utilities: `getDeviceId()`
@@ -58,15 +60,23 @@ Supporting delegate forwarding:
 
 1. Add Push Notifications capability.
 2. Add Background Modes with Remote notifications.
-3. If rich media is required, create or reuse a Notification Service Extension.
-4. Create and enable an App Group for both the main app and the extension when needed.
-5. Add `FlareLane` to the relevant targets in `Podfile`.
+3. If rich media is required, create or reuse a Notification Service Extension. FlareLane ships a ready-made base class `FlareLaneNotificationServiceExtension` (subclass it), or forward to `FlareLaneNotificationServiceExtensionHelper.shared` from a custom `UNNotificationServiceExtension` in both `didReceive(_:withContentHandler:)` and `serviceExtensionTimeWillExpire()`.
+4. Create and enable an App Group on both the main app and the extension, named `group.<bundleID>.flarelane` where `<bundleID>` is the app's Bundle Identifier.
+5. Add FlareLane to the relevant targets (CocoaPods `Podfile` or SPM products).
 6. Initialize in `application(_:didFinishLaunchingWithOptions:)`.
-7. Forward token and notification delegate callbacks.
+7. Forward token and notification delegate callbacks (`FlareLaneAppDelegate.shared` for the device token; `FlareLaneNotificationCenter.shared` for the notification-center delegate methods).
 8. If the product customizes click, foreground, or in-app behavior, register the handlers during bootstrap.
 9. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
-10. If supported profile fields are required, add [server Track API](server-api.md) sync rather than a non-existent iOS `setUserAttributes` call.
+10. If supported profile fields are required, call `setUserAttributes(attributes:)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 11. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from app logic.
+
+## Disabling automatic click-URL opening
+
+By default FlareLane opens the notification's landing URL or deep link automatically on click (`http`/`https` open in an in-app Safari view; custom schemes route as a deep link). Only disable this when the app must own click routing. The click still reaches `setNotificationClickedHandler`, so register a handler to route the URL yourself.
+
+- App-wide: add a boolean key `flarelane_dismiss_launch_url` set to `YES` in `Info.plist`.
+- Per-notification: include `"flarelane_dismiss_launch_url": "true"` in the send `data` payload.
+- There is no Swift API to toggle this; use the `Info.plist` key or the per-message `data` key. Requires SDK `1.6.0+`.
 
 ## Questions that actually matter
 

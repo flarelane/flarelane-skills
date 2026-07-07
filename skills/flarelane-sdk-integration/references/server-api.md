@@ -27,13 +27,19 @@ Server API is not a client SDK public method surface. It belongs in backend serv
 
 ## API Surface
 
-| Goal                                | Method and path                                | Rate limit      | Required core fields                                            |
-| ----------------------------------- | ---------------------------------------------- | --------------- | --------------------------------------------------------------- |
-| Track events, tags, user attributes | `POST /v1/projects/{PROJECT_ID}/track`         | 100 req / 1 sec | at least one of `events`, `tags`, or `userAttributes`           |
-| Send push notification              | `POST /v1/projects/{PROJECT_ID}/notifications` | 5 req / 1 sec   | `targetType`, `targetIds`, and either `body` or `templateId`    |
-| Send email                          | `POST /v1/projects/{PROJECT_ID}/emails`        | 5 req / 1 sec   | `targetType`, `targetIds`, `senderEmail`, `title`, `templateId` |
-| Send SMS                            | `POST /v1/projects/{PROJECT_ID}/sms`           | 5 req / 1 sec   | `targetType`, `targetIds`, `isAdvertisement`, `body`            |
-| Send Kakao Alimtalk                 | `POST /v1/projects/{PROJECT_ID}/alimtalk`      | 5 req / 1 sec   | `targetType`, `targetIds`, `templateId`                         |
+| Goal                                | Method and path                                | Required core fields                                            |
+| ----------------------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
+| Track events, tags, user attributes | `POST /v1/projects/{PROJECT_ID}/track`         | provide at least one of `events`, `tags`, or `userAttributes`   |
+| Send push notification              | `POST /v1/projects/{PROJECT_ID}/notifications` | `targetType`, `targetIds`, and either `body` or `templateId`    |
+| Send email                          | `POST /v1/projects/{PROJECT_ID}/emails`        | `targetType`, `targetIds`, `senderEmail`, `title`, `templateId` |
+| Send SMS                            | `POST /v1/projects/{PROJECT_ID}/sms`           | `targetType`, `targetIds`, `isAdvertisement`, `body`            |
+| Send Kakao Alimtalk                 | `POST /v1/projects/{PROJECT_ID}/alimtalk`      | `targetType`, `targetIds`, `templateId`                         |
+
+### Rate limits
+
+- A single global limit applies across all Open API requests for a project (about 50 requests per second at time of writing). Some send endpoints add their own per-endpoint throttle on top.
+- Treat these numbers as current server behavior that can change, not a fixed contract. Design for `429` responses with backoff, and route high-volume work through a queue so the limit is enforced in one place.
+- Track accepts an empty body but then writes nothing, so always send at least one of `events`, `tags`, or `userAttributes`.
 
 ## Track API
 
@@ -64,7 +70,8 @@ Rules:
 - `subjectType` is `user` or `device`.
 - `subjectId` is the user ID when `subjectType` is `user`, or the FlareLane device ID when `subjectType` is `device`.
 - `type` is the event name.
-- `data` is optional event data. Send an object when writing a normal HTTP client; if a generated OpenAPI client models this field as a JSON string, stringify only at that generated-client boundary.
+- `data` is optional event data and is sent as a JSON object. Send an object when writing a normal HTTP client; if a generated OpenAPI client models this field as a JSON string, stringify only at that generated-client boundary.
+- `createdAt` is optional. Send it as an ISO-8601 timestamp when the backend owns the authoritative event time instead of relying on server receive time.
 
 Tag item:
 
@@ -115,13 +122,15 @@ Use for server-triggered push notifications.
 
 Required:
 
-- `targetType`: `userId`, `segment`, or `device`
+- `targetType`: `userId`, `segment`, `device`, or `userIdCsvUrl`
 - `targetIds`: max 100 for `userId`, max 5 for `segment`, max 100 for `device`
 - `body` or `templateId`
 
-Optional fields include `title`, `url`, `imageUrl`, `data`, `ignoreFrequencyCapping`, `ttl`, `flarelane_save_sent_history`, and `targetPlatforms`.
+Optional fields include `title`, `url`, `imageUrl`, `data`, `ignoreFrequencyCapping`, `ttl`, `targetPlatforms`, `campaignName`, and `buttons` (max 2).
 
 Use `url` for HTTPS web URLs or app deep links. Use `targetPlatforms` when a send must be limited to platforms such as `android`, `ios`, `webDesktop`, or `webMobile`.
+
+`flarelane_save_sent_history` is not a top-level field. It is a key inside the `data` object: set `data.flarelane_save_sent_history` to the string `"false"` to skip saving send history for that notification.
 
 ## Send Email
 
@@ -146,9 +155,9 @@ Required:
 - `targetType`: `userId` or `phoneNumber`
 - `targetIds`: max 100; phone numbers must use E.164 format such as `+821011112222`
 - `isAdvertisement`
-- `body`: max 2000 bytes
+- `body`: max 2000 bytes, measured in EUC-KR encoding after Liquid interpolation tags are stripped, so Korean characters count as 2 bytes
 
-Optional fields include `campaignName`, `title` with max 40 bytes, and `data`.
+Optional fields include `campaignName`, `title` with max 40 bytes (also EUC-KR), and `data`.
 
 ## Send Kakao Alimtalk
 

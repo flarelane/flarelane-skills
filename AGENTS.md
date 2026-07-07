@@ -68,6 +68,13 @@ bash scripts/sync-agents-skills.sh /path/to/target-workspace
 - Prefer one reusable skill per domain or workflow, not one giant catch-all file.
 - When a skill depends on shared repo knowledge, point to a shared reference instead of duplicating content.
 
+## Versioning
+
+- The repo-wide skill version lives in the root `VERSION` file.
+- It is mirrored in `.claude-plugin/marketplace.json` (`metadata.version`) and in `skills/flarelane-sdk-integration/references/staying-current.md` (the "Installed skill version" line).
+- These three must stay in sync; `scripts/validate-skills.mjs` fails the build if they drift.
+- When making a user-facing change to any skill, bump all three together. Consumers rely on this version for the "stay on the latest version" freshness check.
+
 ## Compatibility Notes
 
 - Claude Code reads `CLAUDE.md` and the marketplace manifest under `.claude-plugin/`.

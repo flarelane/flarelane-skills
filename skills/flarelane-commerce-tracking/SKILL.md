@@ -26,6 +26,7 @@ This skill focuses on commerce modeling and placement. For SDK bootstrap, lifecy
    - Keep platform-specific SDK method behavior in the sibling skill so both skills stay consistent.
 
 3. Load the right references.
+   - First run the best-effort freshness check in the sibling [staying-current](../flarelane-sdk-integration/references/staying-current.md) so both the skill and the FlareLane SDK version stay up to date. It is non-blocking.
    - Always read [event-catalog](references/event-catalog.md).
    - Always read [tag-strategy](references/tag-strategy.md).
    - Read the sibling references [shared-surface](../flarelane-sdk-integration/references/shared-surface.md) and [data-modeling](../flarelane-sdk-integration/references/data-modeling.md).
@@ -51,7 +52,7 @@ This skill focuses on commerce modeling and placement. For SDK bootstrap, lifecy
    - Do not duplicate supported user attributes as tags.
    - Do not duplicate FlareLane device default fields as tags.
    - On web, use `setUserAttributes`.
-   - On Android, iOS, React Native, and Flutter, use the server Track API for user attributes unless the target SDK version clearly exposes a public method.
+   - On Android, iOS, React Native, and Flutter, use `setUserAttributes` when the installed SDK is `1.10.0+`; otherwise, or when the backend owns the authoritative profile data, use the server Track API. Confirm against the installed version.
 
 6. Choose stable commerce tags.
    - Use [tag-strategy](references/tag-strategy.md) to derive about 10 to 15 stable tags from the repo.

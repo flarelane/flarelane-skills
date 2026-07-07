@@ -48,7 +48,7 @@ Supported profile fields:
 Platform rules:
 
 - Web SDK: use `setUserAttributes(attributes, useBeacon?)` after `setUserId` and after the profile fields are stable.
-- Android, iOS, React Native, and Flutter: do not invent a client `setUserAttributes` call. Use the [server Track API](server-api.md) for user profile sync unless the target SDK version clearly exposes a public method.
+- Android, iOS, React Native, and Flutter: a client `setUserAttributes` method exists in SDK `1.10.0+`; use it after `setUserId` when the installed version supports it. On older versions, or when the backend is the authoritative owner of the profile fields, sync through the [server Track API](server-api.md). Verify against the installed version before relying on the client method.
 - Email and phone number must not be duplicated across different users.
 - If a field is free-form, product-specific, or not in the supported profile list, model it as a tag instead of a user attribute.
 - If another analytics tool already syncs supported profile fields, reuse those same authoritative source fields instead of scraping a second profile source.

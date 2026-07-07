@@ -147,6 +147,15 @@ FlareLane.setUserAttributes({ language: "ko" }, true);
 
 Use `beacon` only when losing the request during navigation or tab close is a realistic risk. Do not turn it on everywhere by default.
 
+### WebView bridge for hybrid apps
+
+When the same web page is loaded inside a native app WebView that has FlareLane wired, the Web SDK can forward behavior to the native SDK so the app and web page share one device and user.
+
+- Detection is automatic. The Web SDK activates bridge mode when it finds `window.FlareLaneBridge` (Android JavascriptInterface) or `window.webkit.messageHandlers.FlareLaneBridge` (iOS WKWebView). There is no public web method to turn it on.
+- The native side registers those globals via `FlareLaneJavascriptInterface` (see the [android](android.md), [ios](ios.md), [react-native](react-native.md), and [flutter](flutter.md) references). The web page itself needs no bridge-specific code.
+- Under the bridge, `setUserId`, `setTags`, `trackEvent`, and `setUserAttributes` forward to the native SDK. `initialize` and the subscription methods (`getIsSubscribed`, `setIsSubscribed`, `setConvertedHandler`, `setIsSubscribedChangeHandler`) become no-ops because the native app drives init and permissions.
+- Keep the normal web setup as-is; do not branch the web code for bridge vs standalone. The SDK handles both.
+
 ## Required setup shape
 
 1. Add the root `sw.js` file or configure an explicit `serviceWorkerPath`.
@@ -179,7 +188,8 @@ Use `beacon` only when losing the request during navigation or tab close is a re
 
 ## Caution points
 
-- Do not add `setCurrentPath`. The web SDK now recognizes the current path automatically.
+- Do not add `setCurrentPath`. It still exists but is a deprecated no-op that only logs a warning; the web SDK now recognizes the current path automatically.
+- The web SDK always opens the notification's landing URL on click; there is no option to disable automatic click-URL processing on web (that mechanism exists only on Android and iOS).
 - Do not initialize on every render or on every client-side navigation.
 - Do not place `sw.js` under a nested route path unless `serviceWorkerPath` matches that path exactly.
 - Do not use the body-bottom pattern if some earlier inline code already calls FlareLane.

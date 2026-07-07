@@ -9,6 +9,10 @@ description: Integrate FlareLane into existing web, Android, iOS, React Native, 
 
 Use this skill to integrate or review FlareLane work in a real product codebase without scattering SDK calls or API requests everywhere. Detect the target surface from the repo, read the shared reference plus one target-specific reference, then make the smallest architecture-consistent change that wires the requested SDK public methods or server API calls. Prefer the least code that cleanly satisfies the request. Avoid speculative abstractions, new layers, or broad cleanup unless the target codebase already depends on them or the request truly needs them. When tags, events, or user data already flow through another analytics tool in the repo, inspect that path first and reuse the same stable business values when FlareLane semantics match. The skill should remain deployable as-is, without depending on local workspace files or stable official-doc URLs.
 
+## Stay current
+
+Before editing install files or wiring SDK calls, run the best-effort freshness check in [staying-current](references/staying-current.md). It keeps two things fresh: the skill itself (compare the installed skill version to the canonical source and tell the user how to update if behind) and the FlareLane SDK dependency (resolve the latest published version and confirm version-gated methods against what the target repo installs). The check is non-blocking: if the network is unavailable, note it and continue with what is installed.
+
 ## Workflow
 
 1. Detect the target surface before asking questions.
@@ -69,8 +73,8 @@ Use this skill to integrate or review FlareLane work in a real product codebase 
    - Core SDK surface: `initialize`, `setUserId`, `setTags`, `trackEvent`, `displayInApp`.
    - Core server surface: Track API for `events`, `tags`, and `userAttributes`; Send APIs for push notifications, email, SMS, and Kakao Alimtalk.
    - If the request asks for other public methods, use the platform reference for `setLogLevel`, subscribe state methods, device ID lookup, click or foreground handlers, in-app action handlers, or web `setUserAttributes`.
-   - Do not invent `setUserAttributes` on mobile SDKs. If the target is Android, iOS, React Native, or Flutter, prefer the server Track API for user profile synchronization unless that SDK exposes a matching public method in the target version.
-   - Add `subscribe`, `unsubscribe`, click handlers, foreground handlers, in-app action handlers, service extensions, server send jobs, or advanced web loader patterns only when the platform or request requires them.
+   - `setUserAttributes` exists on mobile SDKs (Android, iOS, React Native, Flutter) from version `1.10.0+`, and on Web at any version. Use it when the installed SDK supports it; otherwise, or when the backend owns the authoritative profile data, use the server Track API. Confirm the method against the installed version instead of assuming either way.
+   - Add `subscribe`, `unsubscribe`, click handlers, foreground handlers, in-app action handlers, service extensions, WebView bridge wiring, click-URL disabling, server send jobs, or advanced web loader patterns only when the platform or request requires them.
    - Do not preemptively add extra abstractions, fallback flows, instrumentation, caching, retries, feature flags, or refactors that were not requested.
    - Do not refactor unrelated code.
 

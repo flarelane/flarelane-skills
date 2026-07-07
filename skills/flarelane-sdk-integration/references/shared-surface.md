@@ -4,6 +4,8 @@ Read this file first, then read exactly one platform file or [server-api](server
 
 For `setUserId`, tags, events, user attributes, segmentation, personalization, or automation data, also read [data-modeling](data-modeling.md).
 
+Before editing install files or wiring SDK calls, run the best-effort freshness check in [staying-current](staying-current.md) so the skill and the pinned SDK versions stay up to date.
+
 ## Deployment model
 
 This skill must remain usable after publication without access to this workspace's SDK source code.
@@ -37,7 +39,9 @@ Use these only when the product flow actually needs them.
 | Notification click handler      | `setConvertedHandler(callback)`                                           | `setNotificationClickedHandler(handler)`                                                                    | `setNotificationClickedHandler(callback)`                                                          | `setNotificationClickedHandler(callback)`                                                      | `setNotificationClickedHandler(handler)`                                                |
 | Foreground notification handler | none                                                                      | `setNotificationForegroundReceivedHandler(handler)`                                                         | `setNotificationForegroundReceivedHandler(callback)`                                               | `setNotificationForegroundReceivedHandler(callback)`                                           | `setNotificationForegroundReceivedHandler(handler)`                                     |
 | In-app action handler           | `setInAppMessageActionHandler(handler)`                                   | `setInAppMessageActionHandler(handler)`                                                                     | `setInAppMessageActionHandler(callback)`                                                           | `setInAppMessageActionHandler(callback)`                                                       | `setInAppMessageActionHandler(handler)`                                                 |
-| User attributes                 | `setUserAttributes(attributes, useBeacon?)`                               | no public SDK method; use Track API                                                                         | no public SDK method; use Track API                                                                | no public SDK method; use Track API                                                            | no public SDK method; use Track API                                                     |
+| User attributes                 | `setUserAttributes(attributes, useBeacon?)`                               | `setUserAttributes(context, JSONObject)` in `1.10.0+`, else server Track API                                | `setUserAttributes(attributes:)` in `1.10.0+`, else server Track API                               | `setUserAttributes(attributes)` in `1.10.0+`, else server Track API                            | `setUserAttributes(attributes)` in `1.10.0+`, else server Track API                     |
+| WebView bridge (hybrid apps)    | auto-detects native bridge; forwards `setUserId`/`setTags`/`trackEvent`/`setUserAttributes` | register `FlareLaneJavascriptInterface` on the `WebView`                                     | register `FlareLaneJavascriptInterface` on the `WKWebView`                                          | inject `FlareLaneJavascriptInterface.injectedJavaScript` + `onMessage`                         | wire `FlareLaneJavascriptInterface` via `webview_flutter` or `flutter_inappwebview`     |
+| Disable auto click-URL open     | not configurable in Web SDK                                               | manifest `flarelane_dismiss_launch_url=true` or per-message `data`                                          | `Info.plist` `flarelane_dismiss_launch_url=YES` or per-message `data`                              | native flag + custom click handler                                                             | native flag + custom click handler                                                      |
 
 ## Server API surface
 
@@ -79,10 +83,12 @@ Optional scope, only when required:
 - device ID lookup for support or debug UX
 - notification click or foreground handlers
 - in-app action handlers
-- web `setUserAttributes`
+- `setUserAttributes` on Web, or on Android/iOS/React Native/Flutter when the installed SDK is `1.10.0+`
 - web deferred loader or `beacon` patterns
 - iOS Notification Service Extension
-- server Track API sync for user attributes on mobile SDK integrations
+- WebView bridge wiring for hybrid apps that embed a FlareLane web page inside a native WebView
+- disabling automatic notification click-URL opening when the app owns click routing (Android/iOS)
+- server Track API sync for user attributes when the backend is authoritative, or when the installed mobile SDK predates `1.10.0`
 - server Send API calls for push, email, SMS, or Kakao Alimtalk
 
 ## Cross-platform timing rules

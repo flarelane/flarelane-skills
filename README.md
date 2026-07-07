@@ -52,6 +52,17 @@ bash scripts/sync-agents-skills.sh --force /path/to/target-workspace
 
 This copies the repo's committed skills into `.agents/skills/` without touching unrelated skills already present in the target workspace. The script refuses to replace an existing same-named skill unless `--force` is passed; use `--dry-run` first to inspect the destination paths.
 
+## Staying Up To Date
+
+FlareLane SDKs and these skills change over time, so keeping the installed copy current matters. Each skill runs a best-effort, non-blocking freshness check at the start of a task (see `skills/flarelane-sdk-integration/references/staying-current.md`): it compares the installed skill version against the canonical `VERSION` file in this repo and tells you how to update if you are behind.
+
+To update:
+
+- Installed with the `skills` CLI (`npx skills add flarelane/flarelane-skills`): run `npx skills update` (alias `upgrade`), or re-run `npx skills add flarelane/flarelane-skills`.
+- Installed as a Claude Code marketplace plugin: update the plugin from its marketplace so the latest repo state is pulled.
+
+The repo-wide version lives in `VERSION` and is mirrored in `.claude-plugin/marketplace.json` and the skill's `staying-current.md`. The validator fails if these drift, so bump all three together when releasing.
+
 ## Validate Skills
 
 Validate every skill in `skills/`:

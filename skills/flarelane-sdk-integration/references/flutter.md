@@ -18,11 +18,13 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - Identify user: `FlareLane.shared.setUserId(userId)`
 - Set tags: `FlareLane.shared.setTags(tags)`
 - Track event: `FlareLane.shared.trackEvent(type, data?)`
-- Show in-app: `FlareLane.shared.displayInApp(group, data?)`
-- User attributes: no public Flutter SDK method; use the [server Track API](server-api.md)
-- Permission surface: `FlareLane.shared.isSubscribed()`, `FlareLane.shared.subscribe(fallbackToSettings?, callback?)`, and `FlareLane.shared.unsubscribe(callback?)`
-- Notification and in-app handlers: `setNotificationClickedHandler(handler)`, `setNotificationForegroundReceivedHandler(handler)`, and `setInAppMessageActionHandler(handler)`
+- Show in-app: `FlareLane.shared.displayInApp(group, [data])`
+- User attributes: `FlareLane.shared.setUserAttributes(Map<String, Object?> attributes)` in SDK `1.10.0+`; on older versions use the [server Track API](server-api.md). Verify against the installed version.
+- Permission surface: `FlareLane.shared.isSubscribed()`, `FlareLane.shared.subscribe([fallbackToSettings, callback])`, and `FlareLane.shared.unsubscribe([callback])`
+- Notification and in-app handlers: `FlareLane.shared.setNotificationClickedHandler(handler)`, `FlareLane.shared.setNotificationForegroundReceivedHandler(handler)` (call `event.display()` to show it), and `FlareLane.shared.setInAppMessageActionHandler(handler)`
 - Device utilities: `FlareLane.shared.getDeviceId()`
+- WebView bridge (hybrid apps): `FlareLaneJavascriptInterface` adapters for `webview_flutter` or `flutter_inappwebview`, so web-page `setUserId`/`setTags`/`trackEvent`/`setUserAttributes` calls propagate to the app
+- Note on arguments: only `initialize`'s `requestPermissionOnLaunch` is a named parameter; the trailing arguments on `trackEvent`, `displayInApp`, `subscribe`, and `unsubscribe` are optional positional parameters
 
 ## Common target files in the repo
 
@@ -54,7 +56,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 3. Initialize via `FlareLane.shared.initialize(...)`.
 4. If the product customizes click, foreground, or in-app behavior, register the handlers once in the root layer.
 5. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
-6. If supported profile fields are required, add [server Track API](server-api.md) sync rather than a non-existent Flutter `setUserAttributes` call.
+6. If supported profile fields are required, call `FlareLane.shared.setUserAttributes(...)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 7. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from Dart app flows.
 8. Inspect native iOS and Android projects for required notification setup.
 
@@ -81,6 +83,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - If the app already has an AppDelegate or native notification handlers, merge rather than replace.
 - Do not register handlers from widgets that rebuild frequently.
 - Avoid running initialization from widget rebuild paths.
+- To take over click routing, there is no Dart flag: set the native `flarelane_dismiss_launch_url` flag (Android manifest meta-data, iOS `Info.plist`) or per-message `data`, then handle the URL in `FlareLane.shared.setNotificationClickedHandler`.
 
 ## Verification
 

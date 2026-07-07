@@ -7,6 +7,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 ## Install contract
 
 - npm package: `@flarelane/react-native-sdk`
+- Default export: `import FlareLane from '@flarelane/react-native-sdk';` then call static methods such as `FlareLane.initialize(...)`. It is not a set of named exports.
 - Resolve the latest published npm version at integration time before editing `package.json`
 - If the target repo already pins the package, keep that pin unless the user explicitly asks to upgrade or the needed API is unavailable
 - Treat React Native as two layers: JS API calls plus native iOS and Android plumbing
@@ -19,10 +20,11 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - Set tags: `setTags(tags)`
 - Track event: `trackEvent(type, data?)`
 - Show in-app: `displayInApp(group, data?)`
-- User attributes: no public React Native SDK method; use the [server Track API](server-api.md)
-- Permission surface: `isSubscribed(callback)`, `subscribe(fallbackToSettings, callback?)`, and `unsubscribe(callback?)`
-- Notification and in-app handlers: `setNotificationClickedHandler(callback)`, `setNotificationForegroundReceivedHandler(callback)`, and `setInAppMessageActionHandler(callback)`
-- Device utilities: `getDeviceId()`
+- User attributes: `setUserAttributes(attributes)` in SDK `1.10.0+`; on older versions use the [server Track API](server-api.md). Verify against the installed version.
+- Permission surface: `isSubscribed(callback)`, `subscribe(fallbackToSettings, callback?)`, and `unsubscribe(callback?)` — these are callback-based and return `void`
+- Notification and in-app handlers: `setNotificationClickedHandler(callback)`, `setNotificationForegroundReceivedHandler(callback)` (call `event.display()` on the received event to show it), and `setInAppMessageActionHandler(callback)`
+- Device utilities: `getDeviceId()` returns a `Promise<string | null>`
+- WebView bridge (hybrid apps): `FlareLaneJavascriptInterface` from `@flarelane/react-native-sdk/adapters/react-native-webview` — inject `FlareLaneJavascriptInterface.injectedJavaScript` into both `injectedJavaScript` and `injectedJavaScriptBeforeContentLoaded`, and wire `onMessage`, so web-page `setUserId`/`setTags`/`trackEvent`/`setUserAttributes` calls propagate to the app
 
 ## Common target files in the repo
 
@@ -52,7 +54,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 2. Initialize from the JS entrypoint.
 3. If the product customizes click, foreground, or in-app behavior, register the handlers once in the JS root layer.
 4. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
-5. If supported profile fields are required, add [server Track API](server-api.md) sync rather than a non-existent React Native `setUserAttributes` call.
+5. If supported profile fields are required, call `setUserAttributes(attributes)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 6. Wire JS calls for `setUserId`, `setTags`, `trackEvent`, and `displayInApp`.
 7. Inspect native `ios/` and `android/` folders and add the required notification plumbing.
 8. Keep existing native modules and notification code intact.
@@ -80,6 +82,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - If the app is Expo-managed and native folders are missing, confirm whether generating native projects is acceptable before promising native changes.
 - Do not register handlers inside a screen component that can remount often.
 - Avoid duplicating initialization in hot-reload-only code paths.
+- To take over click routing, there is no JS flag: set the native `flarelane_dismiss_launch_url` flag (Android manifest meta-data, iOS `Info.plist`) or per-message `data`, then handle the URL in `setNotificationClickedHandler`.
 
 ## Verification
 

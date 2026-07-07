@@ -7,9 +7,9 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 ## Install contract
 
 - Dependency coordinate: `com.github.flarelane:flarelane-android-sdk`
+- Distributed through JitPack, so the repository `maven { url 'https://jitpack.io' }` must be reachable to the Gradle build (in `settings.gradle` `dependencyResolutionManagement` or the project `build.gradle`); add it only if the target repo does not already have it
 - Resolve the latest published version from registry metadata before editing Gradle
 - If the target repo already pins a FlareLane Android version, keep that pin unless the user explicitly asks to upgrade or the needed API is unavailable
-- Add the Maven repository required by the published package only if the target repo does not already have it
 
 ## Public methods used on Android
 
@@ -18,8 +18,8 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - Identify user: `setUserId(context, userId)`
 - Set tags: `setTags(context, JSONObject)`
 - Track event: `trackEvent(context, type, JSONObject?)`
-- Show in-app: `displayInApp(context, group, JSONObject?)`
-- User attributes: no public Android SDK method; use the [server Track API](server-api.md)
+- Show in-app: `displayInApp(context, group, JSONObject?)` (a `displayInApp(context, group)` overload also exists)
+- User attributes: `setUserAttributes(context, JSONObject)` in SDK `1.10.0+`; it only sends when a user ID is already set. On older versions, sync through the [server Track API](server-api.md). Verify against the installed version.
 - Permission surface: `isSubscribed(context)`, `subscribe(context, fallbackToSettings, handler)`, and `unsubscribe(context, handler)`
 - Notification and in-app handlers: `setNotificationClickedHandler(handler)`, `setNotificationForegroundReceivedHandler(handler)`, and `setInAppMessageActionHandler(handler)`
 - Device utilities: `getDeviceId(context)`
@@ -59,8 +59,21 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 6. If the product customizes click, foreground, or in-app behavior, register the handlers during bootstrap.
 7. If permission is deferred, wire a later `subscribe()` call.
 8. If the product owns a push settings UI, wire `isSubscribed()` and `unsubscribe()` there.
-9. If supported profile fields are required, add [server Track API](server-api.md) sync rather than a non-existent Android `setUserAttributes` call.
+9. If supported profile fields are required, call `setUserAttributes(context, JSONObject)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 10. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from product logic, not one-off test buttons.
+
+## Disabling automatic click-URL opening
+
+By default FlareLane opens the notification's landing URL or deep link automatically on click. Only disable this when the app must own click routing (for example, custom in-app navigation). The click is still delivered to `setNotificationClickedHandler`, so register a handler to route the URL yourself.
+
+- App-wide: add manifest meta-data inside `<application>`:
+
+  ```xml
+  <meta-data android:name="flarelane_dismiss_launch_url" android:value="true" />
+  ```
+
+- Per-notification: include `"flarelane_dismiss_launch_url": "true"` in the send `data` payload.
+- There is no handler return value that suppresses the URL; use the manifest flag or the per-message `data` key. Requires SDK `1.6.0+`.
 
 ## Questions that actually matter
 
