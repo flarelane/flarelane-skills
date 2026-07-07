@@ -1,6 +1,6 @@
 ---
 name: flarelane-commerce-tracking
-description: Model and integrate FlareLane commerce events, tags, and supported user attributes in existing storefront, app, or backend codebases. Use when Codex needs to audit a commerce codebase, detect product, cart, wishlist, checkout, order, subscription, or profile flows, ensure baseline FlareLane integration exists, then wire the standard commerce event catalog such as AddToCart, InitiateCheckout, Purchase, StartTrial, Subscribe, and ViewContent, choose about 10 stable commerce tags without duplicating FlareLane device defaults or supported user attributes, and sync supported user attributes through the correct surface such as the Web SDK or server Track API.
+description: Model and integrate FlareLane commerce events, tags, and supported user attributes in existing storefront, app, or backend codebases. Use when Codex needs to audit a commerce codebase, detect product, cart, wishlist, checkout, order, subscription, or profile flows, ensure baseline FlareLane integration exists, then wire a recommended commerce event set such as AddToCart, InitiateCheckout, Purchase, StartTrial, Subscribe, and ViewContent (event names are free-form conventions, not a FlareLane built-in catalog), choose about 10 stable commerce tags without duplicating FlareLane device defaults or supported user attributes, and sync supported user attributes through the correct surface such as the Web SDK or server Track API.
 ---
 
 # FlareLane Commerce Tracking
@@ -59,12 +59,13 @@ This skill focuses on commerce modeling and placement. For SDK bootstrap, lifecy
    - Prefer values that help segmentation and personalization: lifecycle, loyalty, subscription, cart state, coupon state, order history, preferred category, preferred store, payment preference, or fulfillment preference.
    - Prefer stable traits that the repo already syncs to other analytics tools when those traits are still backed by authoritative product state and are not better modeled as supported user attributes or FlareLane defaults.
    - Use fewer than 10 only when the codebase truly lacks stable fields; if so, explain the gap instead of padding with noisy data.
-   - If a tag is truly device-specific, prefix the key with `@device`.
+   - If a tag is truly device-specific, prefix the key with `@device_` (with the trailing underscore).
 
-7. Wire the standard commerce events.
-   - Use the exact event codes from [event-catalog](references/event-catalog.md).
-   - Use the requested payload keys and value shapes from the catalog.
-   - For events whose payload is `none`, do not invent extra keys by default.
+7. Wire the commerce events.
+   - Event names are free-form in FlareLane, so this skill supplies a validated default. For a zero-base repo with no existing commerce instrumentation — the primary case — confidently apply the recommended event set and payload conventions in [event-catalog](references/event-catalog.md) as the default plan for every commerce flow that exists. If the repo already emits commerce events to another tool, reuse those existing names at the same dispatch point instead.
+   - Keep event-name casing consistent, and never use the reserved `@` prefix.
+   - Treat catalog payloads as the recommended shape, not FlareLane requirements. For events whose payload is `none`, do not invent extra keys by default.
+   - For revenue attribution, send a numeric amount (and quantity when relevant) and flag that the Console purchase-conversion config must map those keys; see the event-catalog revenue notes.
    - Track each event only after the business action actually succeeds.
    - Prefer existing analytics dispatch points over screen-local duplicate handlers.
    - If an existing analytics wrapper already emits the same commerce event, add FlareLane at that dispatch point and reuse the same stable payload fields, but do not copy vendor-only metadata.

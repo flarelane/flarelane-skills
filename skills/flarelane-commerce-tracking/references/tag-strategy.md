@@ -2,6 +2,8 @@
 
 Choose tags from real, stable commerce data. Target about 10 to 15 tags when the repo supports them.
 
+For a zero-base repo, treat the strong tag candidates below as the recommended default set and wire every one the repo can source from stable state. When the repo already syncs customer traits to another analytics tool, reuse those authoritative fields instead of inventing parallel keys.
+
 ## Never duplicate these fields as tags
 
 Supported user attributes:
@@ -14,18 +16,21 @@ Supported user attributes:
 - `country`
 - `language`
 
-FlareLane device defaults:
+FlareLane device defaults (auto-collected at device registration):
 
-- `browser`
-- `browserVersion`
 - `platform`
 - `deviceModel`
 - `osVersion`
+- `appVersion`
 - `sdkType`
 - `sdkVersion`
 - `languageCode`
 - `countryCode`
 - `timeZone`
+- `pushToken`
+- `browser` (web only)
+- `browserVersion` (web only)
+- `apsEnvironment` (iOS only)
 
 If a field is already covered above, do not send it again as a tag.
 

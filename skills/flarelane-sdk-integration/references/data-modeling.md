@@ -77,11 +77,13 @@ Data types:
 
 - string
 - number
-- boolean
+- boolean (accepted, but stored as the string `"true"` or `"false"`, so segment on the string value)
 - time as an ISO-8601 string with timezone, for example `2024-04-19T14:23:56+09:00`
 - time as a millisecond Unix timestamp, for example `1681721331085`
-- array with a single value type, all strings or all numbers
+- array with a single value type, all strings or all numbers, max 100 elements
 - `null` to delete an existing tag value
+
+Keys containing `.` or `\` are silently dropped, and nested objects are not supported. These constraints are enforced server-side for both tags and event data.
 
 Avoid:
 
@@ -94,7 +96,7 @@ Avoid:
 Device-specific tags:
 
 - Prefer user-level tag consistency when `setUserId` is used.
-- If a tag must stay device-specific, prefix the key with `@device` so user-ID tag migration policy does not apply.
+- If a tag must stay device-specific, prefix the key with `@device_` (with the trailing underscore) so user-ID tag migration policy does not apply. Keys without that prefix sync up to the user.
 
 ## Events
 
@@ -117,24 +119,28 @@ Recommended event payloads:
 - time values with the same format rules as tags
 - boolean flags that matter for segmentation or automation
 
-Data types:
+Data types (same rules as tags):
 
 - string
 - number
-- boolean
+- boolean (stored as the string `"true"` or `"false"`)
 - time as an ISO-8601 string with timezone
 - time as a millisecond Unix timestamp
-- array with a single value type, all strings or all numbers
+- array with a single value type, all strings or all numbers, max 100 elements
 
-Automatically collected events:
+Each event is capped at about 30 KB, and the server Track endpoint accepts at most 100 events per request.
+
+Automatically collected events (reserved, `@`-prefixed):
 
 - `@first_session`
 - `@clicked`
 - `@iam_displayed`
 - `@iam_clicked`
 - `@iam_closed`
+- `@background_received`
+- `@foreground_received`
 
-Use custom event names for product-specific behavior and avoid colliding with automatically collected event names.
+Use custom event names for product-specific behavior. Never prefix a custom event name with `@` or reuse a reserved name.
 
 ## Modeling choice
 

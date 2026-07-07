@@ -4,7 +4,7 @@ FlareLane SDKs and this skill change over time. Run this best-effort freshness c
 
 ## This skill's version
 
-- Installed skill version: **0.2.0** (keep this in sync with the repo `VERSION` file and `.claude-plugin/marketplace.json`).
+- Installed skill version: **0.3.0** (keep this in sync with the repo `VERSION` file and `.claude-plugin/marketplace.json`).
 - Canonical source: `https://github.com/flarelane/flarelane-skills`.
 
 ## Check that the skill itself is up to date
