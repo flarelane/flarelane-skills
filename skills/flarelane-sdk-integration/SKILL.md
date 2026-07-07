@@ -153,6 +153,7 @@ Read [server API reference](references/server-api.md). Keep the project token in
 
 In the final response, summarize:
 
+- the exact files changed, so the user can review the diff before shipping
 - where FlareLane was initialized
 - where the public SDK methods or server API calls are made from
 - which existing analytics values were reused, renamed, or intentionally ignored

@@ -97,7 +97,9 @@ By default FlareLane opens the notification's landing URL or deep link automatic
 
 ## Caution points
 
-- Do not create a second push stack when one already exists. Merge into the current delegate flow.
+- Do not create a second push stack when one already exists. If a `UNUserNotificationCenterDelegate` is already set, keep it as the delegate and add `FlareLaneNotificationCenter.shared` forwarding calls inside its existing `willPresent`/`didReceive` methods — never reassign `UNUserNotificationCenter.current().delegate`, which would silently kill the app's own deep-link, badge, and other push-SDK handling.
+- The SDK swizzles UIApplication/notification delegate methods by default; if the app disables swizzling or uses Firebase or another SDK that swizzles, verify the two coexist and forward correctly.
+- If the app uses per-scheme or per-configuration bundle IDs (for example `com.acme.app.dev`, `.staging`), add a matching `group.<bundleID>.flarelane` App Group for each bundle ID on both the main app and the extension; a single hard-coded group silently fails to share data in the non-matching build. Expect provisioning profiles to need regeneration, which can affect manual signing or CI.
 - If the app is SwiftUI-only, add the minimal `AppDelegate` bridge instead of forcing a full lifecycle rewrite.
 - Keep the extension deployment target aligned with the main target.
 - Do not register handlers from a frequently recreated SwiftUI view.

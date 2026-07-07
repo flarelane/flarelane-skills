@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "FlareLane skills for AI agents — SDK and server API integration guidance, commerce tracking workflows, and future product-specific workflows",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "plugins": [
     {

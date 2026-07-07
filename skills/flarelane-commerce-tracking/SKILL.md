@@ -1,6 +1,6 @@
 ---
 name: flarelane-commerce-tracking
-description: Model and integrate FlareLane commerce events, tags, and supported user attributes in existing storefront, app, or backend codebases. Use when Codex needs to audit a commerce codebase, detect product, cart, wishlist, checkout, order, subscription, or profile flows, ensure baseline FlareLane integration exists, then wire a recommended commerce event set such as AddToCart, InitiateCheckout, Purchase, StartTrial, Subscribe, and ViewContent (event names are free-form conventions, not a FlareLane built-in catalog), choose about 10 stable commerce tags without duplicating FlareLane device defaults or supported user attributes, and sync supported user attributes through the correct surface such as the Web SDK or server Track API.
+description: Model and integrate FlareLane commerce events, tags, and supported user attributes in existing storefront, app, or backend codebases. Use when the user explicitly wants to add or review FlareLane commerce tracking: detect product, cart, wishlist, checkout, order, subscription, or profile flows, ensure baseline FlareLane integration exists, then — after confirming scope with the user — wire a recommended commerce event set such as AddToCart, InitiateCheckout, Purchase, StartTrial, Subscribe, and ViewContent (event names are free-form conventions, not a FlareLane built-in catalog), choose about 10 stable commerce tags without duplicating FlareLane device defaults or supported user attributes, and sync supported user attributes through the correct surface such as the Web SDK or server Track API.
 ---
 
 # FlareLane Commerce Tracking
@@ -61,12 +61,14 @@ This skill focuses on commerce modeling and placement. For SDK bootstrap, lifecy
    - Use fewer than 10 only when the codebase truly lacks stable fields; if so, explain the gap instead of padding with noisy data.
    - If a tag is truly device-specific, prefix the key with `@device_` (with the trailing underscore).
 
-7. Wire the commerce events.
-   - Event names are free-form in FlareLane, so this skill supplies a validated default. For a zero-base repo with no existing commerce instrumentation — the primary case — confidently apply the recommended event set and payload conventions in [event-catalog](references/event-catalog.md) as the default plan for every commerce flow that exists. If the repo already emits commerce events to another tool, reuse those existing names at the same dispatch point instead.
+7. Propose the plan, then wire the commerce events.
+   - Event names are free-form in FlareLane, so this skill supplies a validated default. For a zero-base repo — the primary case — build the recommended plan from [event-catalog](references/event-catalog.md) for every commerce flow that exists; do not ask the customer to design their own taxonomy. If the repo already emits commerce events to another tool, base the plan on those existing names at the same dispatch point instead.
+   - Before editing, present that plan — the events, the ~10-15 tags, the user attributes, and the exact files to change — and get the user's confirmation of scope. This is proposal-first, not do-everything-silently: it preserves the confident default while avoiding a large unrequested diff. Wire only confirmed flows.
    - Keep event-name casing consistent, and never use the reserved `@` prefix.
    - Treat catalog payloads as the recommended shape, not FlareLane requirements. For events whose payload is `none`, do not invent extra keys by default.
+   - Pick exactly one owner (client or server) per event type; FlareLane does not deduplicate the same event across client and server.
    - For revenue attribution, send a numeric amount (and quantity when relevant) and flag that the Console purchase-conversion config must map those keys; see the event-catalog revenue notes.
-   - Track each event only after the business action actually succeeds.
+   - Track each event only after the business action actually succeeds. If the confirmed success point for `Purchase`/`Subscribe`/`StartTrial` is ambiguous (optimistic navigation, an unconfirmed thank-you route), ask before placing the event — confidence never overrides the backend-confirmation rule.
    - Prefer existing analytics dispatch points over screen-local duplicate handlers.
    - If an existing analytics wrapper already emits the same commerce event, add FlareLane at that dispatch point and reuse the same stable payload fields, but do not copy vendor-only metadata.
 

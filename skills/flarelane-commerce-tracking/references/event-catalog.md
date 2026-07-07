@@ -13,6 +13,8 @@ Regardless of path:
 
 ## Standard commerce events
 
+The amounts in the payload column (`0.00`, `predicted_ltv: "0.00"`) are illustrative placeholders — never emit them literally. Replace with the real value from the codebase, or do not wire the event.
+
 | Event code             | Trigger after this succeeds                                                                  | Preferred owner                                    | Suggested payload                                           |
 | ---------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- |
 | `AddPaymentInfo`       | customer adds or confirms payment info during checkout                                       | SDK or backend, depending on checkout architecture | none                                                        |
@@ -85,4 +87,4 @@ Look for event success points in:
 - Do not fire `Purchase`, `StartTrial`, or `Subscribe` before the backend accepts them.
 - Do not add placeholder `0.00` values into production code. Use real values from the codebase.
 - Do not attach random extra fields to events whose payload the convention here lists as `none`.
-- Do not emit the same event from both client and server unless the repo already deduplicates them.
+- Pick exactly one owner (client OR server) per event type. FlareLane does not deduplicate client vs server events for you — a client `trackEvent` carries no idempotency key, and another tool's dedup (Segment/Amplitude `messageId`) does not apply to FlareLane. Emitting the same event from both sides double-counts conversions and revenue.

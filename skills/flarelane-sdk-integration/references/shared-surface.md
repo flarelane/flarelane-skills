@@ -57,7 +57,7 @@ Server APIs are backend REST calls, not SDK public methods.
 
 Server API credentials:
 
-- `PROJECT_ID` and the project token are available in the FlareLane Console.
+- `PROJECT_ID` and the project token are both found in the FlareLane Console but have different trust levels: `projectId` is a public client identifier (safe in client code), while `PROJECT_TOKEN` is a server-only secret. They are different values — never swap them or co-locate them.
 - Use `Authorization: Bearer <PROJECT_TOKEN>` from server-side code only.
 - Use `Idempotency-Key` for retryable sends or Track calls where duplicates would matter.
 
@@ -119,7 +119,8 @@ Optional scope, only when required:
 Rules:
 
 - For a new integration, resolve the latest published version right before editing install files.
-- After resolving the latest version, write an exact pinned version unless the target repo already has a deliberate dependency range policy.
+- Before pinning that version, confirm its minimum requirements are satisfied by the target repo: Android `minSdk`, iOS deployment target, and the repo's Gradle/AGP, CocoaPods, Node, or React Native versions. If the latest version's minimums exceed what the repo meets, pin the newest version whose minimums the repo already satisfies rather than silently forcing the customer to raise their floor. Never adopt a new major version without checking its API against this skill.
+- After resolving the version, write an exact pinned version unless the target repo already has a deliberate dependency range policy.
 - This version lookup rule applies to SDK packages only; server API calls do not require an SDK version.
 - If the target project already pins a FlareLane version, keep that pin unless the user explicitly asks to upgrade or the needed API does not exist in the pinned version.
 - Prefer registry metadata over README snippets.

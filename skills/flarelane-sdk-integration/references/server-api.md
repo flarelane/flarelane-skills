@@ -12,9 +12,12 @@ Server API is not a client SDK public method surface. It belongs in backend serv
 - Auth header: `Authorization: Bearer <PROJECT_TOKEN>`
 - Optional idempotency header: `Idempotency-Key: <stable-request-key>`
 - Store credentials in server-side secrets such as `FLARELANE_PROJECT_ID` and `FLARELANE_PROJECT_TOKEN`.
+- Never store the token in a client-exposed env var. In JS frameworks a `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_`, `EXPO_PUBLIC_`, or `PUBLIC_` prefix inlines the value into the shipped bundle and source maps — this is the most common real-world token leak. `projectId` may use such a prefix (it is public); the token must not, and must never be imported into a client component.
 - Do not commit tokens, print tokens in logs, send tokens to clients, or expose them through public config endpoints.
 
 `Idempotency-Key` means a stable key that lets a retried request avoid duplicate side effects. Use it for send operations and any Track retry path where duplicated events, tags, or user attribute updates would be harmful.
+
+Treat it as mandatory, not optional, for any Send or Track-event call reached from a queue, worker, scheduled job, or webhook: those paths are at-least-once by design, so without a stable key (from an order, message, or job ID) a redelivery double-sends push/SMS/email/Alimtalk to end users or double-counts events and revenue.
 
 ## Common Target Files
 
@@ -213,7 +216,8 @@ Interpolation example:
 ## Caution Points
 
 - Do not expose `FLARELANE_PROJECT_TOKEN` in frontend, mobile, React Native JS, Flutter client code, logs, crash reports, or source maps.
-- Do not send marketing or advertising messages without checking the product's consent state.
+- Do not send marketing or advertising messages without checking the product's consent state. If the repo has no consent or subscription model at all, do not wire marketing sends — require an explicit opt-in gate to be built first; only transactional sends may proceed.
+- Set `isAdvertisement` (SMS) to reflect the true nature of the message. Misclassifying an advertisement as non-advertising bypasses ad-labeling, prefix, and quiet-hour handling and is a legal/compliance violation for the customer.
 - Do not loop large send batches synchronously inside a request handler; use a queue or job.
 - Do not rely on UI-generated timestamps for backend-owned events when the backend has the authoritative time.
 - Do not duplicate sends on retry; use `Idempotency-Key` for retryable operations.

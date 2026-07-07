@@ -58,7 +58,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 5. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
 6. If supported profile fields are required, call `FlareLane.shared.setUserAttributes(...)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 7. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from Dart app flows.
-8. Inspect native iOS and Android projects for required notification setup.
+8. Complete the native setup — the Dart API alone does not deliver push. On iOS add the Push Notifications capability and Background Modes (remote notifications), reconcile `AppDelegate` with any existing notification handling (see below), and add a Notification Service Extension if rich media is needed; on Android confirm the manifest and any existing FCM service still coexist. Verify a real push is delivered, not just that the app compiles.
 
 ## Questions that actually matter
 

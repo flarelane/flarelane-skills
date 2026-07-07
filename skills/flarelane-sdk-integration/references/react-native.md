@@ -56,7 +56,9 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 4. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
 5. If supported profile fields are required, call `setUserAttributes(attributes)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 6. Wire JS calls for `setUserId`, `setTags`, `trackEvent`, and `displayInApp`.
-7. Inspect native `ios/` and `android/` folders and add the required notification plumbing.
+7. Add the required native plumbing. JS `initialize` alone compiles and may register a device, but push click/foreground/delivery stays silently broken without it:
+   - iOS: add the Push Notifications capability and Background Modes (remote notifications); forward `didRegisterForRemoteNotificationsWithDeviceToken` to `FlareLaneAppDelegate.shared`; and forward `willPresent`/`didReceive` (the `UNUserNotificationCenter` delegate methods) to `FlareLaneNotificationCenter.shared`.
+   - Android: confirm an `Application` class initializes the SDK.
 8. Keep existing native modules and notification code intact.
 
 ## Questions that actually matter
@@ -79,7 +81,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 
 - Do not stop after adding JS calls if native notification plumbing is absent.
 - Prefer the repo's real entrypoint over a demo component for initialization.
-- If the app is Expo-managed and native folders are missing, confirm whether generating native projects is acceptable before promising native changes.
+- If the app is Expo-managed and native folders are missing, confirm whether generating native projects is acceptable before promising native changes. This native SDK does not run in Expo Go — it requires prebuild plus a custom dev/EAS build (and push entitlements via a config plugin or `app.json`). Adding the package to a managed app without a dev build leaves push silently dead.
 - Do not register handlers inside a screen component that can remount often.
 - Avoid duplicating initialization in hot-reload-only code paths.
 - To take over click routing, there is no JS flag: set the native `flarelane_dismiss_launch_url` flag (Android manifest meta-data, iOS `Info.plist`) or per-message `data`, then handle the URL in `setNotificationClickedHandler`.

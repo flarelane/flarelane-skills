@@ -12,6 +12,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
   2. very bottom of `<body>`
   3. plain `<head>` only when neither of the above is feasible
 - Serve a root `sw.js` file unless the product truly needs a custom `serviceWorkerPath`.
+- If a root service worker already exists (PWA, `next-pwa`, Workbox, CRA, Vue PWA), do NOT overwrite it and do NOT register a second worker at the same scope — that would drop the customer's offline caching, precache, and background sync with no build error. Instead append `importScripts("https://cdn.flarelane.com/ServiceWorker.js");` into the existing worker file, and point `serviceWorkerPath` at it.
 - Root `sw.js` contents:
 
 ```js

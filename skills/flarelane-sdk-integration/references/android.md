@@ -7,7 +7,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 ## Install contract
 
 - Dependency coordinate: `com.github.flarelane:flarelane-android-sdk`
-- Distributed through JitPack, so the repository `maven { url 'https://jitpack.io' }` must be reachable to the Gradle build (in `settings.gradle` `dependencyResolutionManagement` or the project `build.gradle`); add it only if the target repo does not already have it
+- Distributed through JitPack, so the repository `maven { url 'https://jitpack.io' }` must be reachable to the Gradle build; add it only if the target repo does not already have it. If `settings.gradle` uses `dependencyResolutionManagement` (especially `repositoriesMode = FAIL_ON_PROJECT_REPOS`), add JitPack there — adding it to the project/`allprojects` `build.gradle` will fail the build.
 - Resolve the latest published version from registry metadata before editing Gradle
 - If the target repo already pins a FlareLane Android version, keep that pin unless the user explicitly asks to upgrade or the needed API is unavailable
 
@@ -53,14 +53,13 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 
 1. Add the FlareLane repository if needed.
 2. Add the dependency to the app module.
-3. Ensure the app has an `Application` class.
-4. Register that `Application` in `AndroidManifest.xml`.
-5. Initialize FlareLane in `Application.onCreate()`.
-6. If the product customizes click, foreground, or in-app behavior, register the handlers during bootstrap.
-7. If permission is deferred, wire a later `subscribe()` call.
-8. If the product owns a push settings UI, wire `isSubscribed()` and `unsubscribe()` there.
-9. If supported profile fields are required, call `setUserAttributes(context, JSONObject)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
-10. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from product logic, not one-off test buttons.
+3. If an `Application` class already exists and is registered (`android:name`), add `initWithContext` to its existing `onCreate()` — do not create a second one. Create and register a new `Application` only if none exists; never declare two `android:name` entries or replace the customer's existing class (that would silently stop their crash-reporting/DI/other-SDK init).
+4. Initialize FlareLane in that `Application.onCreate()`.
+5. If the product customizes click, foreground, or in-app behavior, register the handlers during bootstrap.
+6. If permission is deferred, wire a later `subscribe()` call.
+7. If the product owns a push settings UI, wire `isSubscribed()` and `unsubscribe()` there.
+8. If supported profile fields are required, call `setUserAttributes(context, JSONObject)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
+9. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from product logic, not one-off test buttons.
 
 ## Disabling automatic click-URL opening
 
@@ -94,7 +93,7 @@ By default FlareLane opens the notification's landing URL or deep link automatic
 ## Caution points
 
 - Do not move initialization into an `Activity` unless the app architecture truly cannot expose `Application`.
-- Preserve existing Firebase Messaging or notification code and merge carefully.
+- FlareLane ships its own FCM receiver and Firebase sender. Leave the customer's existing `FirebaseMessagingService` intact for their own payloads, do not remove or re-point it, and verify FlareLane pushes still arrive alongside it.
 - Keep Android 13+ notification permission behavior consistent with the product UX.
 - Do not register handlers from a screen that may mount multiple times.
 - Avoid firing duplicated initialization in multiple processes or test harnesses.

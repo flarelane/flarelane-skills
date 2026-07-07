@@ -92,6 +92,7 @@ Use these only when they exist in the repo and are not covered by FlareLane defa
 - current product ID unless the product deliberately treats it as a stable preference
 - full cart line items or huge arrays
 - payment tokens, card details, secrets, or raw credentials
+- regulated or sensitive PII: government/national IDs, passport numbers, precise address or geolocation, health, biometric, or gender data (these do not belong in FlareLane at all)
 - rapidly changing debug values or timestamps with no segmentation value
 
 ## Rules

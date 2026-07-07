@@ -24,9 +24,9 @@ For backend API calls, also read [server-api](server-api.md).
 ## User ID
 
 - Use `setUserId` when auth state becomes authoritative: login success, signup completion, account switch, or logout.
-- Clear or replace the user ID on logout or account switch to avoid cross-user device linkage.
+- On logout or account switch, clear or replace the user ID so the next user on a shared device does not inherit the previous identity and receive their messages. Use the platform's supported clearing mechanism (passing `null`/empty where the SDK accepts it, or `resetDevice` to fully detach the device) rather than guessing a call.
 - Prefer the same stable user ID that the product backend uses.
-- Do not use mutable values such as email, phone number, nickname, or display name as the user ID when the backend has a durable ID.
+- Never use mutable or PII values such as email, phone number, nickname, or display name as the user ID — including when the product currently keys users on email. If there is no stable non-PII identifier, derive or generate an opaque stable one instead; otherwise identity fragments when the value changes, and the ID itself becomes PII that flows into Send API `targetIds`.
 - Wire `setUserId` before user-scoped tags, user attributes, or events that should attach to the authenticated user.
 
 ## User attributes
@@ -50,7 +50,7 @@ Platform rules:
 - Web SDK: use `setUserAttributes(attributes, useBeacon?)` after `setUserId` and after the profile fields are stable.
 - Android, iOS, React Native, and Flutter: a client `setUserAttributes` method exists in SDK `1.10.0+`; use it after `setUserId` when the installed version supports it. On older versions, or when the backend is the authoritative owner of the profile fields, sync through the [server Track API](server-api.md). Verify against the installed version before relying on the client method.
 - Email and phone number must not be duplicated across different users.
-- If a field is free-form, product-specific, or not in the supported profile list, model it as a tag instead of a user attribute.
+- If a field is free-form, product-specific, or not in the supported profile list, model it as a tag instead of a user attribute — with one hard exception: never route regulated or sensitive PII (government IDs, national ID, passport, precise address or geolocation, health/medical, biometric, gender, or similar) into tags or event data. Those do not belong in FlareLane at all.
 - If another analytics tool already syncs supported profile fields, reuse those same authoritative source fields instead of scraping a second profile source.
 
 ## Tags
@@ -91,7 +91,9 @@ Avoid:
 - mixed-type arrays such as `["a", 1]`
 - constantly changing debug values
 - sensitive secrets, raw credentials, or payment data
+- regulated or sensitive PII: government IDs, precise address/geolocation, health, biometric, or gender data
 - huge payloads that would be better represented as a small computed trait
+- sending `null` for a field that is merely unset — that deletes the tag. Omit the tag instead, and send `null` only when deletion is genuinely intended.
 
 Device-specific tags:
 
