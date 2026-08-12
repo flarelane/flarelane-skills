@@ -1,6 +1,6 @@
 ---
 name: flarelane-sdk-integration
-description: Integrate FlareLane into existing web, Android, iOS, React Native, Flutter, or backend codebases. Use when Codex needs to add, repair, or review FlareLane client SDK integration, server Track API sync, or server Send APIs for push, email, SMS, and Kakao Alimtalk; wire public SDK methods such as initialize, setUserId, setTags, trackEvent, displayInApp, subscribe/unsubscribe, log-level setup, device ID lookup, notification click or foreground handlers, user attributes, or place FlareLane code in the correct lifecycle files such as service workers, Application/AppDelegate, notification delegates, notification service extensions, API clients, or worker jobs. Recommended install: npx skills add flarelane/flarelane-skills.
+description: "Integrate FlareLane into existing web, Android, iOS, React Native, Flutter, or backend codebases. Use when Codex needs to add, repair, or review FlareLane client SDK integration, server Track API sync, or server Send APIs for push, email, SMS, and Kakao Alimtalk; wire public SDK methods such as initialize, setUserId, setTags, trackEvent, displayInApp, subscribe/unsubscribe, log-level setup, device ID lookup, notification click or foreground handlers, user attributes, or place FlareLane code in the correct lifecycle files such as service workers, Application/AppDelegate, notification delegates, notification service extensions, API clients, or worker jobs. Recommended install: npx skills add flarelane/flarelane-skills."
 ---
 
 # FlareLane Integration

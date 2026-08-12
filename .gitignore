@@ -1,6 +1,9 @@
 # Local mirror of skills
 .agents/skills/
 
+# Lockfile written by `npx skills add` when this repo is used as a workspace
+skills-lock.json
+
 # Dependencies
 node_modules/
 

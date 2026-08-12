@@ -31,7 +31,38 @@ function parseFrontmatter(content) {
   return {
     name: normalize(nameMatch?.[1]),
     description: normalize(descriptionMatch?.[1]),
+    rawName: nameMatch?.[1]?.trim(),
+    rawDescription: descriptionMatch?.[1]?.trim(),
   };
+}
+
+// A plain (unquoted) YAML scalar cannot contain ": " — strict parsers such as the
+// `yaml` package used by `npx skills add` read it as a nested mapping and reject
+// the file ("Nested mappings are not allowed in compact mappings"). The regex
+// parser above is blind to that, so check the raw values explicitly.
+function unquotedScalarProblem(raw) {
+  if (raw === undefined) {
+    return null;
+  }
+  const quoted =
+    (raw.startsWith('"') && raw.endsWith('"') && raw.length > 1) ||
+    (raw.startsWith("'") && raw.endsWith("'") && raw.length > 1);
+  if (quoted) {
+    return null;
+  }
+  if (raw.includes(": ")) {
+    return 'contains ": " and must be quoted';
+  }
+  if (raw.endsWith(":")) {
+    return 'ends with ":" and must be quoted';
+  }
+  if (/\s#/.test(raw)) {
+    return 'contains " #" and must be quoted';
+  }
+  if (/^[-?:,[\]{}#&*!|>%@`]/.test(raw)) {
+    return "starts with a YAML indicator character and must be quoted";
+  }
+  return null;
 }
 
 if (!fs.existsSync(skillsRoot)) {
@@ -85,6 +116,16 @@ for (const skillName of entries) {
     fail(`missing description field: skills/${skillName}/SKILL.md`);
   } else if (parsed.description.length > 1024) {
     fail(`description too long: ${skillName}`);
+  }
+
+  for (const [field, raw] of [
+    ["name", parsed.rawName],
+    ["description", parsed.rawDescription],
+  ]) {
+    const problem = unquotedScalarProblem(raw);
+    if (problem) {
+      fail(`unsafe YAML frontmatter: skills/${skillName}/SKILL.md ${field} ${problem}`);
+    }
   }
 
   if (content.includes("[TODO:")) {
