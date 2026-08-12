@@ -65,6 +65,13 @@ function unquotedScalarProblem(raw) {
   return null;
 }
 
+function markdownFilesIn(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name));
+}
+
 if (!fs.existsSync(skillsRoot)) {
   console.error(`skills directory not found: ${skillsRoot}`);
   process.exit(1);
@@ -130,6 +137,24 @@ for (const skillName of entries) {
 
   if (content.includes("[TODO:")) {
     fail(`unfinished TODO markers found: skills/${skillName}/SKILL.md`);
+  }
+
+  // Relative markdown links must resolve. Skills are installed as a flat tree
+  // under .agents/skills/, so a link that only works from the repo layout (or is
+  // off by a directory level) sends the agent to a file that is not there.
+  for (const mdFile of markdownFilesIn(skillDir)) {
+    const mdContent = fs.readFileSync(mdFile, "utf8");
+    for (const [, link] of mdContent.matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (/^(https?:|mailto:|#)/.test(link)) {
+        continue;
+      }
+      const target = path.resolve(path.dirname(mdFile), link.split("#")[0]);
+      if (!fs.existsSync(target)) {
+        fail(
+          `broken relative link in ${path.relative(repoRoot, mdFile)}: ${link}`,
+        );
+      }
+    }
   }
 }
 

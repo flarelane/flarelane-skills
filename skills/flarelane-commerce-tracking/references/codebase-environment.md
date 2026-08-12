@@ -92,7 +92,7 @@ Confirm whether the repo already has:
 - web `setUserAttributes`, if the surface is web
 - backend Track API client, if the surface is backend or mobile user attributes are required
 
-If any of the baseline pieces are missing, use the sibling [flarelane-sdk-integration](../flarelane-sdk-integration/SKILL.md) skill first.
+If any of the baseline pieces are missing, use the sibling [flarelane-sdk-integration](../../flarelane-sdk-integration/SKILL.md) skill first.
 
 ## Minimal blocking questions
 
