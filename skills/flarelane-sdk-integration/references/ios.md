@@ -2,7 +2,15 @@
 
 Use this file for native iOS integrations.
 
+Official docs, authoritative when this file is stale or silent: [iOS SDK](https://flarelane.com/ko/docs/sdk-integrations/ios-sdk), [APNs credentials](https://flarelane.com/ko/docs/sdk-integrations/apns-setting), [Mobile SDK reference](https://flarelane.com/ko/docs/mobile-sdk-reference). English: swap `/ko/` for `/en/`.
+
 For user ID, events, tags, or user attributes, also read [data-modeling](data-modeling.md).
+
+## iOS is never "just add the SDK"
+
+An iOS integration is only finished when the Xcode project itself is set up: capabilities, a Notification Service Extension, and an App Group. Adding the pod and calling `initWithLaunchOptions` compiles and can even register a device, so the work *looks* done — while image notifications never render and delivery/foreground behavior stays broken. The minimal-diff principle does not apply here; see "Delivery baseline" in [shared-surface](shared-surface.md).
+
+Most of this lives in `project.pbxproj` and entitlements, not in Swift. Plan for project-level work from the start, and read "Doing Xcode work without Xcode" below before deciding what to hand back to the user.
 
 ## Install contract
 
@@ -11,7 +19,22 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
   - Swift Package Manager: `https://github.com/flarelane/FlareLane-iOS-SDK`, product `FlareLane` for the main target and product `FlareLaneExtension` for a Notification Service Extension target.
 - Resolve the latest published version at integration time before editing `Podfile` or `Package.swift`
 - If the target repo already pins `FlareLane` or already has a `Podfile.lock`/`Package.resolved`, keep that resolved version unless the user explicitly asks to upgrade or the needed API is unavailable
-- If the app uses a Notification Service Extension, add FlareLane to both the main target and the extension target (CocoaPods: `pod 'FlareLane'` in the extension target too; SPM: the `FlareLaneExtension` product)
+- CocoaPods requires dynamic frameworks: `use_frameworks!` must be at the top of the `Podfile`. If it is absent, add it — and if the repo deliberately builds static (`use_frameworks! :linkage => :static`, `use_modular_headers!`, or another pod that requires static linking), raise the conflict with the user instead of flipping it silently.
+- Add FlareLane to **both** the main target and the extension target — CocoaPods needs its own `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of the `Podfile`; SPM needs product `FlareLane` on the app target and `FlareLaneExtension` on the extension target.
+- Run `pod install` after editing the `Podfile`, and expect the extension target to exist first — a `Podfile` block for a target that Xcode has not created yet fails.
+
+```ruby
+# Podfile
+use_frameworks!
+
+target 'YourApp' do
+  pod 'FlareLane', '<resolved-version>'
+end
+
+target 'FlareLaneNotificationServiceExtension' do
+  pod 'FlareLane', '<resolved-version>'
+end
+```
 
 ## Public methods used on iOS
 
@@ -58,17 +81,75 @@ Supporting delegate forwarding:
 
 ## Required setup shape
 
-1. Add Push Notifications capability.
-2. Add Background Modes with Remote notifications.
-3. If rich media is required, create or reuse a Notification Service Extension. FlareLane ships a ready-made base class `FlareLaneNotificationServiceExtension` (subclass it), or forward to `FlareLaneNotificationServiceExtensionHelper.shared` from a custom `UNNotificationServiceExtension` in both `didReceive(_:withContentHandler:)` and `serviceExtensionTimeWillExpire()`.
-4. Create and enable an App Group on both the main app and the extension, named `group.<bundleID>.flarelane` where `<bundleID>` is the app's Bundle Identifier.
-5. Add FlareLane to the relevant targets (CocoaPods `Podfile` or SPM products).
-6. Initialize in `application(_:didFinishLaunchingWithOptions:)`.
-7. Forward token and notification delegate callbacks (`FlareLaneAppDelegate.shared` for the device token; `FlareLaneNotificationCenter.shared` for the notification-center delegate methods).
+Steps 1–7 are the mandatory baseline. None of them is conditional on the request; a "basic push only" integration still needs all seven.
+
+1. **Push Notifications capability** on the main app target.
+2. **Background Modes → Remote notifications** on the main app target.
+3. **Notification Service Extension target.** Create it (or reuse an existing one) — do not treat it as a rich-media-only extra: without it, image notifications never render, and the official setup flow includes it in every iOS integration. Suggested product name `FlareLaneNotificationServiceExtension`; do not activate its scheme; set its **Minimum Deployments to the main app target's** deployment target.
+4. **App Group `group.<bundleID>.flarelane`**, where `<bundleID>` is the main app's Bundle Identifier, added *and* toggled on for **both** the main app target and the extension target. Added but unchecked behaves exactly like missing.
+5. **FlareLane on both targets** (`Podfile` blocks or SPM `FlareLane` + `FlareLaneExtension`), then `pod install`.
+6. **Initialize** with `initWithLaunchOptions` in `application(_:didFinishLaunchingWithOptions:)`, and on SwiftUI-only apps add the small `AppDelegate` + `@UIApplicationDelegateAdaptor` bridge first.
+7. **Forward the callbacks**: device token to `FlareLaneAppDelegate.shared`, and the `UNUserNotificationCenter` `willPresent` / `didReceive` methods to `FlareLaneNotificationCenter.shared`. Implement the extension's `didReceive(_:withContentHandler:)` and `serviceExtensionTimeWillExpire()` (see below).
 8. If the product customizes click, foreground, or in-app behavior, register the handlers during bootstrap.
 9. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
 10. If supported profile fields are required, call `setUserAttributes(attributes:)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 11. Wire `setUserId`, `setTags`, `trackEvent`, and `displayInApp` from app logic.
+
+Before this can deliver anything, the user must also have APNs credentials in the FlareLane Console: the App Identifier registered in Apple Developer, plus the `.p8` key, Key ID, and Team ID entered in the console's app-push channel settings. Surface it as a confirmation item — code alone cannot make a send succeed.
+
+## Notification Service Extension code
+
+Either subclass FlareLane's ready-made `FlareLaneNotificationServiceExtension` base class, or keep Xcode's generated `UNNotificationServiceExtension` subclass and forward to the helper. Forward from both methods, and branch on `isFlareLaneNotification` so a customer's own (or another SDK's) notifications keep their existing handling:
+
+```swift
+import UserNotifications
+import FlareLane
+
+class NotificationService: UNNotificationServiceExtension {
+  override func didReceive(_ request: UNNotificationRequest,
+                           withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+    if FlareLaneNotificationServiceExtensionHelper.shared.isFlareLaneNotification(request) {
+      FlareLaneNotificationServiceExtensionHelper.shared.didReceive(request, withContentHandler: contentHandler)
+    } else {
+      // existing non-FlareLane handling, or contentHandler(request.content)
+    }
+  }
+
+  override func serviceExtensionTimeWillExpire() {
+    FlareLaneNotificationServiceExtensionHelper.shared.serviceExtensionTimeWillExpire()
+  }
+}
+```
+
+When the app already has a Notification Service Extension for another push vendor, extend that extension with this branch instead of creating a second one — an app gets one NSE, and a second target does not run.
+
+## Doing Xcode work without Xcode
+
+The baseline lives in project files, so decide per step whether to edit it or hand it over. Never let "I cannot click in Xcode" turn into silently skipping a step.
+
+Editable from the filesystem:
+
+- Background Modes: `UIBackgroundModes` containing `remote-notification` in the target's `Info.plist`. If the target generates its plist (`GENERATE_INFOPLIST_FILE = YES` and no `Info.plist` in the repo), do this one in Xcode and verify the key afterwards rather than hand-rolling build settings.
+- App Group and push entitlement: `com.apple.security.application-groups` with `group.<bundleID>.flarelane`, and `aps-environment` (`development`), in each target's `.entitlements` file. Every target needs its own entitlements file, referenced by `CODE_SIGN_ENTITLEMENTS` in `project.pbxproj`.
+- `Podfile`, `Package.swift`, `AppDelegate`, and the extension's Swift source.
+
+Hand back to the user, with exact values spelled out:
+
+- Creating the Notification Service Extension target. Hand-editing `project.pbxproj` to add a target is error-prone and can corrupt the project — prefer **File > New > Target > Notification Service Extension**, product name, cancel the scheme prompt, then match Minimum Deployments.
+- Enabling the capability in the Apple Developer App ID, and regenerating provisioning profiles when signing is manual or CI-managed. Entitlements written by hand without a matching profile fail at signing, not at build.
+
+Then report status as "code complete, N manual steps pending" with the checklist, and say which verification steps only pass once those are done.
+
+## Recommended additions
+
+Beyond the baseline, wire these on every iOS integration without asking first — see "Recommended surface" in [shared-surface](shared-surface.md):
+
+- `setLogLevel` in debug builds only.
+- A debug-only path that surfaces `getDeviceId()`, so the team can register a test device and use console test sends.
+- `isSubscribed` / `subscribe` / `unsubscribe` on an existing notification settings screen, especially when `requestPermissionOnLaunch` is `false`.
+- `displayInApp` from one real screen or CTA, so the in-app message channel is usable from day one.
+- `setUserAttributes` for every supported profile field the app holds when the installed SDK is `1.10.0+`, or the [server Track API](server-api.md) when the backend owns them.
+- `FlareLaneJavascriptInterface` on any `WKWebView` that renders product pages, so web-side identity and events reach the device.
 
 ## Disabling automatic click-URL opening
 
@@ -80,8 +161,9 @@ By default FlareLane opens the notification's landing URL or deep link automatic
 
 ## Questions that actually matter
 
+Determine these — by inference from the repo wherever possible, and by listing the leftovers in one batch at the end. They are inputs to resolve, not a questionnaire to send first.
+
 - Should permission be requested on launch or later?
-- Do you need rich media notifications now, or only basic push?
 - What is the extension target name if it already exists?
 - What App Group should be reused if one already exists?
 - Which auth lifecycle and product events should map to FlareLane calls?
@@ -97,6 +179,8 @@ By default FlareLane opens the notification's landing URL or deep link automatic
 
 ## Caution points
 
+- Do not stop at the Swift diff. An iOS integration without the capability, Background Modes, extension target, and enabled App Group is unfinished, no matter how clean the code looks.
+- Do not silently downgrade a baseline step to a suggestion. If a step needs Xcode, say so as a pending action item, with the exact target type, product name, App Group id, and deployment target to use.
 - Do not create a second push stack when one already exists. If a `UNUserNotificationCenterDelegate` is already set, keep it as the delegate and add `FlareLaneNotificationCenter.shared` forwarding calls inside its existing `willPresent`/`didReceive` methods — never reassign `UNUserNotificationCenter.current().delegate`, which would silently kill the app's own deep-link, badge, and other push-SDK handling.
 - The SDK swizzles UIApplication/notification delegate methods by default; if the app disables swizzling or uses Firebase or another SDK that swizzles, verify the two coexist and forward correctly.
 - If the app uses per-scheme or per-configuration bundle IDs (for example `com.acme.app.dev`, `.staging`), add a matching `group.<bundleID>.flarelane` App Group for each bundle ID on both the main app and the extension; a single hard-coded group silently fails to share data in the non-matching build. Expect provisioning profiles to need regeneration, which can affect manual signing or CI.
@@ -107,7 +191,11 @@ By default FlareLane opens the notification's landing URL or deep link automatic
 
 ## Verification
 
+- The main target has Push Notifications and Background Modes with Remote notifications.
+- The Notification Service Extension target exists, builds, links FlareLane, and matches the app's deployment target.
+- `group.<bundleID>.flarelane` is present **and checked** on both the main app and the extension, and matches the actual bundle identifier of the build being tested.
 - App builds after `pod install`.
+- A real send arrives on a device, and an **image** send renders its image — the only reliable proof the extension and App Group are wired.
 - Device token forwarding still works.
 - Foreground and click delegate paths still work.
 - Device registration, user ID, tags, and events update correctly.

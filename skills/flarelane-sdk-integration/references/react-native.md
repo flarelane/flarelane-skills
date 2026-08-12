@@ -2,6 +2,8 @@
 
 Use this file for React Native apps.
 
+Official docs, authoritative when this file is stale or silent: [React Native SDK](https://flarelane.com/ko/docs/sdk-integrations/react-native-sdk), plus the [iOS](https://flarelane.com/ko/docs/sdk-integrations/ios-sdk) and [Android](https://flarelane.com/ko/docs/sdk-integrations/android-sdk) pages for the native layer. English: swap `/ko/` for `/en/`.
+
 For user ID, events, tags, or user attributes, also read [data-modeling](data-modeling.md).
 
 ## Install contract
@@ -56,12 +58,26 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 4. If the product owns notification preferences, wire `isSubscribed`, `subscribe`, and `unsubscribe`.
 5. If supported profile fields are required, call `setUserAttributes(attributes)` when the installed SDK is `1.10.0+`; otherwise sync through the [server Track API](server-api.md).
 6. Wire JS calls for `setUserId`, `setTags`, `trackEvent`, and `displayInApp`.
-7. Add the required native plumbing. JS `initialize` alone compiles and may register a device, but push click/foreground/delivery stays silently broken without it:
-   - iOS: add the Push Notifications capability and Background Modes (remote notifications); forward `didRegisterForRemoteNotificationsWithDeviceToken` to `FlareLaneAppDelegate.shared`; and forward `willPresent`/`didReceive` (the `UNUserNotificationCenter` delegate methods) to `FlareLaneNotificationCenter.shared`.
-   - Android: confirm an `Application` class initializes the SDK.
+7. Complete the native baseline. This is mandatory, not a follow-up phase: JS `initialize` alone compiles and may register a device while delivery, foreground handling, and image notifications stay silently broken. See "Delivery baseline" in [shared-surface](shared-surface.md).
+   - iOS — the full list in [ios](ios.md) applies to `ios/`, including the parts a JS-only mindset skips:
+     1. Push Notifications capability.
+     2. Background Modes with Remote notifications.
+     3. A Notification Service Extension target (suggested name `FlareLaneNotificationServiceExtension`), scheme not activated, Minimum Deployments matching the app target.
+     4. App Group `group.<bundleID>.flarelane` added and enabled on **both** the app target and the extension.
+     5. A `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of `ios/Podfile`, then `pod install`. The RN main target gets FlareLane through autolinking, so this extension block is the piece that is easy to forget.
+     6. In `AppDelegate`: forward `didRegisterForRemoteNotificationsWithDeviceToken` to `FlareLaneAppDelegate.shared`, and forward the `UNUserNotificationCenter` `willPresent` / `didReceive` methods to `FlareLaneNotificationCenter.shared`. RN does **not** call `initWithLaunchOptions` natively — JS `initialize` owns that.
+     7. In the extension, forward `didReceive` and `serviceExtensionTimeWillExpire` to `FlareLaneNotificationServiceExtensionHelper.shared`, branching on `isFlareLaneNotification` (code sample in [ios](ios.md)).
+   - Android: confirm an `Application` class initializes the SDK (autolinking covers the dependency), and set `compileSdkVersion`/`targetSdkVersion` to **33 or higher** in `android/app/build.gradle` so the Android 13 notification permission prompt can appear at all.
 8. Keep existing native modules and notification code intact.
+9. Surface the console-side prerequisites the user must confirm: APNs `.p8` key, Key ID, and Team ID for iOS; FCM V1 enabled with a service-account key for Android. Neither is visible from the repo, and without them every send fails.
+
+## Recommended additions
+
+Wire these on every RN integration without asking first (see "Recommended surface" in [shared-surface](shared-surface.md)): `setLogLevel` in dev builds; a debug path that surfaces `getDeviceId()` for test-device registration; `isSubscribed`/`subscribe`/`unsubscribe` on an existing settings screen; one real `displayInApp` trigger; all supported user attributes the app holds; the `FlareLaneJavascriptInterface` WebView bridge if any screen renders product web pages; and, on the Android side, `flarelane_notification_accent_color` taken from the app's existing brand color. The Android notification icon needs an alpha-only silhouette asset — reuse one the repo already has, otherwise hand it off as a one-line request (see "Recommended additions" in [android](android.md)).
 
 ## Questions that actually matter
+
+Determine these — by inference from the repo wherever possible, and by listing the leftovers in one batch at the end. They are inputs to resolve, not a questionnaire to send first.
 
 - Is this a bare React Native app or Expo-managed?
 - Should permission be requested at launch or later?
@@ -79,7 +95,8 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 
 ## Caution points
 
-- Do not stop after adding JS calls if native notification plumbing is absent.
+- Do not stop after adding JS calls if native notification plumbing is absent. A JS-only diff is the most common way an RN integration ships half-done: it builds, the device registers, and image push plus click tracking never work.
+- Creating the iOS extension target needs Xcode. Do the file-editable parts (`Podfile`, `AppDelegate`, entitlements, `Info.plist`), then hand the target creation back as an explicit ordered checklist with exact names — see "Doing Xcode work without Xcode" in [ios](ios.md).
 - Prefer the repo's real entrypoint over a demo component for initialization.
 - If the app is Expo-managed and native folders are missing, confirm whether generating native projects is acceptable before promising native changes. This native SDK does not run in Expo Go — it requires prebuild plus a custom dev/EAS build (and push entitlements via a config plugin or `app.json`). Adding the package to a managed app without a dev build leaves push silently dead.
 - Do not register handlers inside a screen component that can remount often.
@@ -91,6 +108,9 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - App boots without native module errors.
 - Initialization occurs once.
 - Native iOS and Android projects still build.
+- iOS: capability, Background Modes, extension target, and an enabled `group.<bundleID>.flarelane` on both targets are all in place, or listed as pending manual steps.
+- Android: `compileSdkVersion`/`targetSdkVersion` are 33+ and the permission prompt appears on an Android 13+ device.
+- A real send arrives on both platforms, and an image send renders its image on iOS.
 - User ID, tags, events, and in-app display work from real product flows.
 - Subscribe or unsubscribe flows work if the app owns notification settings.
 - Click, foreground, and in-app action handlers run only when they were registered.

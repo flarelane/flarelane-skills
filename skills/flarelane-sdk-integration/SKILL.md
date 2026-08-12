@@ -7,7 +7,7 @@ description: "Integrate FlareLane into existing web, Android, iOS, React Native,
 
 ## Overview
 
-Use this skill to integrate or review FlareLane work in a real product codebase without scattering SDK calls or API requests everywhere. Detect the target surface from the repo, read the shared reference plus one target-specific reference, then make the smallest architecture-consistent change that wires the requested SDK public methods or server API calls. Prefer the least code that cleanly satisfies the request. Avoid speculative abstractions, new layers, or broad cleanup unless the target codebase already depends on them or the request truly needs them. When tags, events, or user data already flow through another analytics tool in the repo, inspect that path first and reuse the same stable business values when FlareLane semantics match. The skill should remain deployable as-is, without depending on local workspace files or stable official-doc URLs.
+Use this skill to integrate or review FlareLane work in a real product codebase without scattering SDK calls or API requests everywhere. Detect the target surface from the repo, read the shared reference plus one target-specific reference, then make the smallest architecture-consistent change that wires the requested SDK public methods or server API calls. Prefer the least code that cleanly satisfies the request — while still covering the platform baseline in full and wiring the recommended surface, both of which sit outside that minimalism. Avoid speculative abstractions, new layers, or broad cleanup unless the target codebase already depends on them or the request truly needs them. When tags, events, or user data already flow through another analytics tool in the repo, inspect that path first and reuse the same stable business values when FlareLane semantics match. The skill should remain deployable as-is, without depending on local workspace files. It is a snapshot, so when it is stale, silent, or contradicted, fall back to the official docs at `https://flarelane.com/ko/docs/` (English: `/en/docs/`).
 
 ## Stay current
 
@@ -43,24 +43,20 @@ Before editing install files or wiring SDK calls, run the best-effort freshness 
    - Do not add dynamic ranges such as `latest`, `+`, `*`, or broad semver ranges for new FlareLane SDK dependencies unless the target repo deliberately uses that policy.
    - For server API integrations, use the API contract in [server-api](references/server-api.md); there is no SDK version to pin unless the target repo already has its own generated client.
    - Do not search docs to unblock routine integration work. Continue from the target repo and these reference contracts instead.
+   - Do consult the official docs when this skill runs out: something is not covered here, the skill disagrees with the installed SDK, a documented step fails, or the topic is destructive or newly released. Doc root `https://flarelane.com/ko/docs/` (English: `/en/docs/`), page links in [staying-current](references/staying-current.md). Docs win over this skill; say which page you used.
 
-3. Keep questions minimal and late.
-   - Do not ask which platform if the repo already shows it.
-   - Do not ask for data you can infer from code or config.
-   - Ask only when the answer changes code:
-     - `projectId`
-     - permission prompt timing
-     - login/logout points for `setUserId`
-     - tag and event source fields
-     - which existing analytics contract should win if multiple tools describe the same business signal differently
-     - `displayInApp` group name and trigger point
-     - web service worker path or root URL
-     - iOS extension name or App Group when not discoverable
-     - server API `projectId`, project token environment variable name, send channel, target identifier, template or message body, consent gate, and idempotency key source
-   - Ask one blocking question at a time.
+3. Gather missing inputs without stalling the integration.
+   - Follow "Inputs from the user, without stalling" in [shared-surface](references/shared-surface.md). The default is: derive it, infer it, or wire it behind a named config key — then keep going.
+   - Do not ask which platform if the repo already shows it, and do not ask for anything inferable from code or config. The iOS App Group is derived from the bundle identifier; the extension name has a default; the service worker path is in the deploy config.
+   - Values that genuinely only the user has — `projectId`, a project token env var name, console template IDs, sender email — get wired as clearly named config keys or env vars with a `TODO`, never as invented literals that would look real in a diff.
+   - Collect every outstanding value into **one** "values I need from you" block at the end, alongside the manual and console steps. Do not stop the work to ask, and do not drip questions one at a time.
+   - Ask standalone and up front only when proceeding under any assumption would be unsafe or would waste the work: an ambiguous multi-platform repo, replacing an existing push stack, or anything that would send real messages to real users.
+   - When an answer arrives, apply it and carry the integration through to the end instead of pausing again for confirmation.
+   - Do not ask permission for recommended-tier work. Infer the values it needs from the repo, wire it, and state the assumptions in the final report.
    - When presenting options, explain pros and cons briefly.
 
-4. Prefer the thinnest viable integration shape.
+4. Prefer the thinnest viable integration shape — for product code only.
+   - "Minimal" applies to how you write app code. It never applies to the platform setup a notification must pass through: capabilities, entitlements, extension targets, App Groups, service workers, SDK floors. Read "Delivery baseline" in [shared-surface](references/shared-surface.md) and treat that baseline as required scope on every integration, including "just add the SDK" requests.
    - Start from the smallest code change that satisfies the request and fits the target repo.
    - Use a small wrapper, service, or integration module only if the codebase already has a service or data layer, or if it prevents real duplication.
    - Put initialization in the platform-correct lifecycle location.
@@ -69,16 +65,25 @@ Before editing install files or wiring SDK calls, run the best-effort freshness 
    - Do not add new hooks, managers, factories, config layers, or helper files just to make the code feel more "architected".
    - If the app is tiny and a wrapper adds ceremony without value, keep the integration direct and minimal.
 
-5. Implement only the requested surface by default.
+5. Implement the baseline, then the recommended surface, then only what was requested.
+   - Sort work into three tiers using "Three tiers of scope" in [shared-surface](references/shared-surface.md): **baseline** (mandatory), **recommended** (offer by default and implement what the repo supports), **on request only** (everything else).
+   - The baseline is not negotiable and not deferrable. On iOS (native, React Native, or Flutter) that means the Push Notifications capability, Background Modes with Remote notifications, a Notification Service Extension target, an App Group `group.<bundleID>.flarelane` enabled on both the app and the extension, and the SDK on both targets. On Android it means the dependency plus `compileSdk`/`targetSdk` 33+. On web it means a reachable root `sw.js` and a console site URL that matches the origin.
+   - Some baseline steps cannot be done by editing files — creating an Xcode target, enabling a capability on the App ID. Do the file-editable parts, then hand the rest back as one ordered checklist with exact names and values. Skipping them silently is the failure mode this step exists to prevent.
+   - Console-side credentials (APNs key, FCM V1 service-account key, web-push site URL) are invisible from the repo and block every send. Always list them for the user to confirm.
+   - Go beyond the literal request into the recommended tier: all supported user attributes the product holds, a one-time backfill alongside change-triggered sync, marketing consent as a tag, core product events, one `displayInApp` trigger, subscription wiring on an existing settings screen, the WebView bridge in hybrid apps, Android notification color and channel name, web `manifest.json` for iOS, `setLogLevel` in debug builds, and a device-ID path for console test sends. These cost little now and are painful to retrofit.
+   - Wire those items directly, without a proposal or approval round. When one needs a value you do not have — `displayInApp` group name, which events matter, which field holds consent — infer it from the repo, choose the obvious option, and name the assumption in the final report instead of blocking on a question.
+   - Some of that work needs a human-supplied input (notification artwork, brand copy, a credential). Reuse what the repo already has; if nothing fits, hand it back as one line with the exact name, format, and tool — never fabricate an asset or ship a placeholder that looks broken in production.
+   - Skip a recommended item only when the repo has no hook for it — no settings screen, no WebView, no consent model, the product does not hold the field — and say which reason applied.
    - Core SDK surface: `initialize`, `setUserId`, `setTags`, `trackEvent`, `displayInApp`.
    - Core server surface: Track API for `events`, `tags`, and `userAttributes`; Send APIs for push notifications, email, SMS, and Kakao Alimtalk.
    - If the request asks for other public methods, use the platform reference for `setLogLevel`, subscribe state methods, device ID lookup, click or foreground handlers, in-app action handlers, or web `setUserAttributes`.
    - `setUserAttributes` exists on mobile SDKs (Android, iOS, React Native, Flutter) from version `1.10.0+`, and on Web at any version. Use it when the installed SDK supports it; otherwise, or when the backend owns the authoritative profile data, use the server Track API. Confirm the method against the installed version instead of assuming either way.
-   - Add `subscribe`, `unsubscribe`, click handlers, foreground handlers, in-app action handlers, service extensions, WebView bridge wiring, click-URL disabling, server send jobs, or advanced web loader patterns only when the platform or request requires them.
+   - Keep custom click, foreground, and in-app action handlers, click-URL disabling, server send jobs, and advanced web loader patterns in the on-request tier — add them when the product has real logic to run there. Subscription wiring and the WebView bridge are recommended-tier, and the iOS Notification Service Extension is baseline.
    - Do not preemptively add extra abstractions, fallback flows, instrumentation, caching, retries, feature flags, or refactors that were not requested.
    - Do not refactor unrelated code.
 
 6. Verify from both code paths and FlareLane behavior.
+   - Confirm the platform baseline is actually in place, item by item, or explicitly listed as pending manual steps. A successful build is not evidence: the classic half-done iOS integration compiles perfectly.
    - Confirm initialization runs once.
    - Confirm a device can register.
    - Confirm user ID, tags, and events change as expected.
@@ -88,10 +93,12 @@ Before editing install files or wiring SDK calls, run the best-effort freshness 
    - Use the checklist in [shared-surface](references/shared-surface.md) before finishing.
 
 7. Review the work against this skill before finishing.
-   - Check whether the diff is the smallest change that satisfies the request.
+   - Check every baseline item for the platform. If one is missing and was not handed back as a named pending step, the work is not done — go finish it.
+   - Check whether the diff is the smallest change that satisfies the request, baseline aside.
    - Check whether any new wrapper, file, or abstraction is justified by existing architecture or real duplication.
    - Check whether FlareLane code was placed in the correct lifecycle or integration point for the platform.
-   - Check whether the change added only the requested surface, without speculative extras.
+   - Check whether the recommended surface was offered in full, and whether every accepted item was actually wired.
+   - Check whether anything beyond baseline and recommended crept in as a speculative extra.
    - Check whether the verification covers the requested product behavior, not only compile success.
    - If the task is a review, use these checks as the rubric and call out which rules were met or violated.
    - If any answer is "no", simplify the change before finalizing.
@@ -119,7 +126,7 @@ Before editing install files or wiring SDK calls, run the best-effort freshness 
 ## Terms
 
 - Service Worker: a background JavaScript file that enables web push in the browser.
-- Notification Service Extension: an iOS extension that can modify incoming pushes, commonly needed for rich media.
+- Notification Service Extension: an iOS extension target that processes incoming pushes before display; required for image notifications, and part of the standard FlareLane iOS setup.
 - Bridge: the layer that lets JavaScript or Dart call native iOS/Android code.
 - App Group: shared iOS storage used by the main app and its extension.
 
@@ -135,15 +142,15 @@ Read [Android reference](references/android.md). Initialize in `Application.onCr
 
 ### iOS
 
-Read [iOS reference](references/ios.md). Expect AppDelegate work plus notification capabilities and, for rich media, a Notification Service Extension.
+Read [iOS reference](references/ios.md). Expect Xcode project work, not just AppDelegate code: Push Notifications capability, Background Modes with Remote notifications, a Notification Service Extension target, and an App Group enabled on both targets. All four are baseline.
 
 ### React Native
 
-Read [React Native reference](references/react-native.md). Treat RN as two layers: JS API surface plus native Android/iOS setup underneath.
+Read [React Native reference](references/react-native.md). Treat RN as two layers: JS API surface plus native Android/iOS setup underneath. The native layer includes the full iOS baseline (capability, Background Modes, extension target, App Group, extension `Podfile` block) — a JS-only diff is an unfinished integration.
 
 ### Flutter
 
-Read [Flutter reference](references/flutter.md). Initialize after `WidgetsFlutterBinding.ensureInitialized()`, then verify native iOS/Android pieces.
+Read [Flutter reference](references/flutter.md). Initialize after `WidgetsFlutterBinding.ensureInitialized()`, then complete the native iOS/Android baseline — the same iOS project work as a native app, on `ios/Runner`.
 
 ### Server API
 
@@ -151,12 +158,19 @@ Read [server API reference](references/server-api.md). Keep the project token in
 
 ## Finish
 
+Do not describe the integration as complete while a baseline item is unresolved. If manual or console steps remain, say "code complete, N steps pending" and list them.
+
 In the final response, summarize:
 
 - the exact files changed, so the user can review the diff before shipping
+- the platform baseline status, item by item: what is done, and what is pending
+- the remaining manual steps as one ordered checklist with exact target names, App Group ids, deployment targets, and settings paths — no "configure it in Xcode" hand-waving
+- one consolidated **"what I need from you"** block, gathering the console-side prerequisites (APNs key, FCM V1 key, web-push site URL), the config keys still holding `TODO` values (`projectId`, project token env var, template IDs, sender email), and any asset hand-off — so the user answers once instead of across several rounds
+- which recommended items were wired, and which were skipped for lack of a hook — so nothing silently disappears
+- the assumptions made for recommended work (event names, `displayInApp` group, consent field), each as one correctable line
+- the two non-code follow-ups: defining events and tags in the console's customer-data page, and disclosing FlareLane in the privacy policy's processing-delegation section
 - where FlareLane was initialized
 - where the public SDK methods or server API calls are made from
 - which existing analytics values were reused, renamed, or intentionally ignored
-- what questions were answered during integration
-- how to verify device registration, tags, events, in-app display, and server API delivery when applicable
+- how to verify device registration, a real send, an image send, click statistics, tags, events, in-app display, and server API delivery when applicable
 - how the final change stayed minimal and whether it passed the skill review checklist

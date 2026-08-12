@@ -2,6 +2,8 @@
 
 Read this file first, then read exactly one platform file or [server-api](server-api.md).
 
+Official docs root: https://flarelane.com/ko/docs/ (English: `/en/docs/`). Treat it as the authority whenever this skill is stale, silent, or contradicted; page links are in [staying-current](staying-current.md).
+
 For `setUserId`, tags, events, user attributes, segmentation, personalization, or automation data, also read [data-modeling](data-modeling.md).
 
 Before editing install files or wiring SDK calls, run the best-effort freshness check in [staying-current](staying-current.md) so the skill and the pinned SDK versions stay up to date.
@@ -13,9 +15,84 @@ This skill must remain usable after publication without access to this workspace
 - Trust the target repo first.
 - Trust the public SDK and server API contracts in this skill second.
 - Use package registry metadata only to resolve the latest published SDK version at integration time.
-- Do not depend on official-doc URLs to start or finish the work.
+- Do not depend on official-doc URLs to *start* the work, but treat the official docs as the fallback authority when this skill is stale, silent, or contradicted: `https://flarelane.com/ko/docs/` (English: `/en/docs/`). Page-by-page links are in [staying-current](staying-current.md).
 - On web, prefer the CDN script tag plus root `sw.js`.
 - For server APIs, keep the project token in backend secrets only and do not add it to client or mobile code.
+
+## Delivery baseline: mandatory, and exempt from the minimal-diff rule
+
+"Smallest change that satisfies the request" governs **product code**. It never governs the platform plumbing a notification must travel through. Skip any of it and the app still compiles, a device may still register, and the customer's first real send silently fails or arrives degraded. That is the most common integration complaint: "연동은 했는데 푸시가 안 옵니다."
+
+Treat every row below as required work for the platform being integrated, even when the user only asked to "add the SDK". Do not label it optional, do not defer it to a later phase, and do not report the integration as complete while any row is unresolved.
+
+| Platform                  | Mandatory baseline before push can work                                                                                                                                                                                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| iOS (native, RN, Flutter) | Push Notifications capability; Background Modes with Remote notifications; a Notification Service Extension target; App Group `group.<bundleID>.flarelane` added **and enabled on both** the main app and the extension; FlareLane added to both targets; device-token and notification-center delegate forwarding |
+| Android                   | JitPack repository reachable; dependency in the app module; init in `Application.onCreate()`; `compileSdk`/`targetSdk` 33+ so the Android 13 notification permission prompt can appear                                                                                          |
+| React Native              | Everything in the iOS and Android rows, plus JS `initialize`. JS alone is not an integration                                                                                                                                                                                    |
+| Flutter                   | Everything in the iOS and Android rows, plus Dart `initialize`. The Dart call is half the work                                                                                                                                                                                  |
+| Web                       | `sw.js` reachable at the site root over `https://`, and the console web-push site URL matching the deployed origin exactly                                                                                                                                                      |
+| Web on iOS                | `manifest.json` linked from `<head>` with `name`, `icons`, `display`, plus install via "Add to Home Screen" on iOS 16.4+                                                                                                                                                        |
+
+### Console-side prerequisites you cannot complete
+
+Push credentials live in the FlareLane Console and Apple/Firebase/Google consoles. Nothing in the repo reveals whether they are set, and without them every send fails no matter how correct the code is. Do not silently assume they exist: state them in the final response as items for the user to confirm.
+
+- iOS/APNs: the app's App Identifier registered in Apple Developer, an APNs `.p8` key, its Key ID, and the Team ID entered in the FlareLane Console under the app-push channel settings.
+- Android/FCM: Firebase Cloud Messaging API (V1) enabled, a service-account key file, and the Sender ID entered in the FlareLane Console.
+- Web: the web-push channel created in the console with the site name and the **exact** `https://` root URL. A mismatched URL means web push never works, with no error in the code.
+- Every platform: the `projectId` for this environment (and, for server APIs, a server-only project token).
+
+### Work only a human can do in an IDE
+
+Some baseline steps cannot be completed by editing files alone — most notably creating an Xcode target, and the provisioning side of capabilities. Follow this protocol instead of quietly dropping them:
+
+1. Do everything that *is* file-editable, and say which file each change landed in.
+2. Emit the remaining steps as one ordered, click-by-click checklist the user can follow without re-deriving anything (target type, exact product name, exact App Group id, exact deployment target to match).
+3. Report status as "code complete, N manual steps pending" — never "integration complete" — and repeat the verification that only passes once those steps are done.
+4. Offer to verify afterwards (build, entitlements diff, a real test send).
+
+## Three tiers of scope
+
+Sort every candidate piece of work into one of these before writing code. The mistake to avoid is collapsing tiers 1 and 2 into "not asked for, so skip".
+
+1. **Baseline (above)** — mandatory. Do it, or hand it back as a named pending step.
+2. **Recommended (below)** — worth doing on almost every integration because it makes the product measurably more useful in FlareLane, and it is far cheaper to wire now than to retrofit after launch. Just build it: no proposal step, no permission question. Implement everything the repo has a natural hook for, and report each item as wired or skipped with its reason.
+3. **On request only** — everything else. Custom handlers with no product need, speculative abstractions, retries, caching, feature flags, refactors. These stay out unless asked.
+
+## Recommended surface
+
+Wire these as part of the integration, without asking first. They are standard practice, not a menu.
+
+Where an item needs a value you do not have — the `displayInApp` group name, which events matter, which field holds consent — infer it from the repo (existing analytics event names, consent columns, settings screens), pick the obvious option, and name the assumption in the final report so the user can correct one line instead of answering a questionnaire up front. Skip an item only when the repo genuinely has no hook (no settings screen, no WebView, no consent model, the product does not hold the field), and say which reason applied. If the user later says an item was unwanted, remove it — cheaper for everyone than blocking the integration on a decision round.
+
+| Recommendation                       | Why it is worth doing now                                                                                                                     | Skip only when                                             |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| All supported user attributes         | FlareLane interprets `email`, `phoneNumber`, `dob`, `timeZone`, `name`, `country`, `language` natively for targeting, personalization, and email/SMS sends. Official guidance is to sync as many as the product has | the product does not hold the field at all                 |
+| One-time backfill for existing users  | Change-triggered sync alone leaves every pre-existing user invisible until they next log in, so day-one campaigns can only reach a fraction of the base. Recommended practice is change-sync **and** an initial bulk sync. Deliver the script; let the customer run it | brand-new product with no existing users                   |
+| Marketing consent as a tag            | Without it, the customer cannot legally separate promotional from transactional sends inside FlareLane                                          | the product has no consent model (then say so plainly)     |
+| Core product events                   | Events are what journey automation and conversion analytics run on; an integration with zero events can only do manual blasts                   | the user wants to define the event taxonomy first           |
+| In-app message trigger (`displayInApp`) | One line, and it unlocks a whole channel the customer already pays for                                                                       | no screen or CTA is a sensible host                        |
+| Push preference UI wiring             | `isSubscribed` / `subscribe` / `unsubscribe` on an existing settings screen, so users can opt back in without going to OS settings              | the app has no settings or preference surface              |
+| WebView bridge                        | In a hybrid app, web-side `setUserId`/tags/events otherwise never reach the device                                                             | the app renders no product WebView                         |
+| Android notification color and channel name | Both are string resources you can fill from the app's existing brand color and copy                                                       | the repo exposes no brand color to reuse                    |
+| Android notification icon             | Without an alpha-only silhouette named `ic_stat_flarelane_default`, Android flattens the launcher icon into a white blob                        | see the asset rule below — reuse or hand off, never fabricate |
+| Web `manifest.json`                   | Without it there is no iOS web push at all                                                                                                     | the site already has a valid manifest, or iOS is out of scope |
+| `setLogLevel` in debug builds         | Makes the first "why is nothing arriving" investigation take minutes instead of hours                                                          | the repo has no debug/release distinction to hang it on    |
+| Test-device registration for QA       | Surfacing the device ID lets the customer use console test sends instead of guessing                                                            | never worth skipping; it is one call behind a debug screen  |
+
+Some recommended items need an input only a human has — artwork, brand copy, a credential, a legal decision. "Do not ask first" does not mean inventing them:
+
+1. Reuse what the repo already contains (an existing monochrome/notification drawable, the theme's brand color, existing user-facing strings), and say in the report which source you used so the owner can override it.
+2. If nothing suitable exists, do not fabricate the asset and do not commit a placeholder that ships visibly broken output. Report it as one hand-off line with the exact name, format, and tool to produce it.
+3. Never generate artwork or logos, and never guess a credential.
+
+Two non-code items cannot be wired in code, so report them as follow-ups for the customer:
+
+- Define the synced events and tags in the console's customer-data page, so marketers see them in dropdowns instead of raw keys.
+- Update the privacy policy's processing-delegation section. FlareLane processes personal data on the customer's behalf; the entry to disclose is 수탁사 (주)플레어랩스, 내용 "정보성/광고성 메시지 발송 대행".
+
+Prefer the server Track API over client SDK calls for data the backend already owns: it does not need an app release to change, and it covers users who never open the app.
 
 ## Public method contract
 
@@ -75,21 +152,26 @@ Default integration scope:
 - wire `trackEvent` to meaningful product actions after the action actually succeeds
 - wire `displayInApp` to a real screen, route, or CTA
 
-Optional scope, only when required:
+Recommended scope, wired by default without asking (see "Recommended surface" above):
 
-- `setLogLevel`
-- `subscribe` and `unsubscribe`
-- subscription state lookup
-- device ID lookup for support or debug UX
-- notification click or foreground handlers
-- in-app action handlers
-- `setUserAttributes` on Web, or on Android/iOS/React Native/Flutter when the installed SDK is `1.10.0+`
+- all supported user attributes the product holds
+- a one-time backfill plus change-triggered sync for tags and attributes
+- marketing consent as a tag
+- core product events and one `displayInApp` trigger
+- subscription state wiring when a settings surface exists
+- WebView bridge in hybrid apps
+- Android notification icon, accent color, and channel naming
+- web `manifest.json` for iOS web push
+- `setLogLevel` in debug builds and a device-ID path for test-device registration
+
+On-request scope, only when the product needs it (the delivery baseline is never in this list):
+
+- custom notification click, foreground, or in-app action handlers, when the product has real routing or UI logic to run
+- disabling automatic notification click-URL opening, when the app must own click routing (Android/iOS)
+- reusing the app's own Android notification channel through `flarelane_default_channel_id`
 - web deferred loader or `beacon` patterns
-- iOS Notification Service Extension
-- WebView bridge wiring for hybrid apps that embed a FlareLane web page inside a native WebView
-- disabling automatic notification click-URL opening when the app owns click routing (Android/iOS)
-- server Track API sync for user attributes when the backend is authoritative, or when the installed mobile SDK predates `1.10.0`
 - server Send API calls for push, email, SMS, or Kakao Alimtalk
+- new abstractions, wrappers, retries, caching, or feature flags around any of the above
 
 ## Cross-platform timing rules
 
@@ -135,23 +217,29 @@ Rules:
 5. Existing push, deep-link, and notification delegate code
 6. Backend env config, API client, notification service, worker, queue, and webhook paths when server APIs are requested
 
-## Minimal blocking questions
+## Inputs from the user, without stalling
 
-Ask only if the answer changes code:
+Almost nothing here should halt the integration. Sort each missing input, handle it, and keep going:
 
-- What is the FlareLane `projectId` for this environment?
-- Should permission be requested on launch or later?
-- On which lifecycle should `setUserId` set, change, or clear the current user?
-- Which fields should become tags?
-- Which stable profile fields belong in user attributes instead of tags, and is the current platform Web SDK or server Track API?
-- Which events should call `trackEvent`, and with which payload keys?
-- Which screen or interaction should call `displayInApp`, and with which group name?
-- On web, can the app serve `/sw.js`, or is a custom `serviceWorkerPath` required?
-- Does the product need custom subscribe or unsubscribe UI, or only the default permission flow?
-- Does it need custom notification click, foreground, or in-app action handling?
-- Does any support or QA flow need a surfaced device ID?
-- For server APIs, which server-side env var should hold the project token?
-- For server sends, which channel, target type, template or body, consent gate, and idempotency key source should be used?
+| Input                                        | Default handling                                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| iOS App Group id                             | derive it: `group.<bundleID>.flarelane` from the target's real bundle identifier — never ask                          |
+| iOS extension target name                    | reuse an existing extension, else default to `FlareLaneNotificationServiceExtension`                                 |
+| Web service worker path / site origin        | read the deploy config and public directory; only surface it if the repo genuinely cannot serve `/sw.js`              |
+| `setUserId` lifecycle points                 | wire the repo's real login, logout, and account-switch paths                                                         |
+| Tags, events, consent field                  | infer from existing analytics calls, consent columns, and domain services; name the choice in the report              |
+| `displayInApp` group and trigger             | pick the obvious screen or CTA and a readable group name; one line to correct later                                  |
+| Permission timing                            | default `requestPermissionOnLaunch: true` unless the repo has an onboarding or permission-priming flow to hook into   |
+| `projectId`                                  | wire it through the repo's existing config or env mechanism with a clearly named key, and list the key as needed      |
+| Server project token                         | wire the **env var name** only. Never a literal, never a guess                                                       |
+| Console-side IDs (template IDs, sender email) | wire as named config values, and list them as needed — these cannot be inferred or invented                          |
+
+Rules:
+
+- Never fabricate a value that would look real in a diff. A made-up `projectId` or template ID passes review and then fails silently in production. Placeholders must be obvious: a named config key or env var plus a `TODO`, never `abc123`-shaped filler.
+- Collect every outstanding value into **one** "values I need from you" block at the end of the work, not a sequence of separate questions. Keep integrating everything that does not depend on them.
+- Ask a question standalone and up front only when proceeding under any assumption would be unsafe or would waste the work: which platform, when the repo has several and the request is ambiguous; whether to replace an existing push stack; anything that would send real messages to real users.
+- When an answer arrives, apply it and continue to the end of the integration rather than pausing again for confirmation.
 
 ## Rules of thumb
 
@@ -167,11 +255,18 @@ Ask only if the answer changes code:
 
 ## Verification checklist
 
-Confirm at least:
+A build that compiles proves nothing about delivery. Confirm at least:
 
+- the delivery baseline for this platform is fully in place, or the pending manual steps are listed explicitly
+- push credentials (APNs, FCM, or the web-push site URL) are confirmed set in the console
 - initialization runs once
-- a device appears after app run
-- permission state matches the product flow
+- a device appears after app run, and the app version shown on the device matches the real build
+- permission state matches the product flow, and allowing permission flips the device to subscribed
+- a real send from the console arrives on the device
+- an **image** send arrives with its image rendered — this is what proves the iOS extension and App Group are actually wired
+- clicking a notification increments the click count in console statistics
+- the customer's own existing push stack still delivers, with no duplicate or swallowed notifications
+- deep links and web links from a notification route as intended
 - user ID becomes visible after login
 - tags update after the chosen sync points
 - events arrive with expected names and payload keys

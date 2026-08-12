@@ -2,6 +2,8 @@
 
 Use this file for browser web push integrations.
 
+Official docs, authoritative when this file is stale or silent: [Web SDK](https://flarelane.com/ko/docs/sdk-integrations/web-sdk), [iOS web push](https://flarelane.com/ko/docs/sdk-integrations/ios-web-push), [Web SDK reference](https://flarelane.com/ko/docs/web-sdk-reference). English: swap `/ko/` for `/en/`.
+
 For user ID, events, tags, or user attributes, also read [data-modeling](data-modeling.md).
 
 ## Install contract
@@ -157,6 +159,17 @@ When the same web page is loaded inside a native app WebView that has FlareLane 
 - Under the bridge, `setUserId`, `setTags`, `trackEvent`, and `setUserAttributes` forward to the native SDK. `initialize` and the subscription methods (`getIsSubscribed`, `setIsSubscribed`, `setConvertedHandler`, `setIsSubscribedChangeHandler`) become no-ops because the native app drives init and permissions.
 - Keep the normal web setup as-is; do not branch the web code for bridge vs standalone. The SDK handles both.
 
+## Recommended additions
+
+Wire these on every web integration without asking first (see "Recommended surface" in [shared-surface](shared-surface.md)): `manifest.json` so iOS web push is possible at all; `setUserAttributes` for every supported profile field the site holds; a subscription toggle through `getIsSubscribed`/`setIsSubscribed` if the site has account settings; one real `displayInApp` trigger; and `setLogLevel` in non-production builds.
+
+## Console-side setup and iOS web push
+
+Two things outside the code decide whether web push works at all. Raise both instead of assuming they are handled.
+
+- The web-push channel in the FlareLane Console needs the site name and the site's **exact** `https://` root URL. A mismatch between that URL and the deployed origin means web push silently never works — no console error, no browser error. Only a root URL is accepted; a mobile subdomain (`m.example.com`) is additionally supported off that root. Confirm which origin the integration is for, including staging vs production.
+- iOS web push (Safari, iOS 16.4+) additionally requires the site to be installable and installed: a `manifest.json` containing at least `name`, `icons`, and `display`, linked from `<head>` as `<link rel="manifest" href="/manifest.json" />`, and the user opening the site from a "Add to Home Screen" web app. In a normal iOS Safari tab there is no subscription prompt — that is Apple's behavior, not a broken integration. If the target site has no manifest and iOS coverage matters, add one.
+
 ## Required setup shape
 
 1. Add the root `sw.js` file or configure an explicit `serviceWorkerPath`.
@@ -170,6 +183,8 @@ When the same web page is loaded inside a native app WebView that has FlareLane 
 9. Use `beacon` only for tag, event, or user-attribute sync paths that must survive page exit.
 
 ## Questions that actually matter
+
+Determine these — by inference from the repo wherever possible, and by listing the leftovers in one batch at the end. They are inputs to resolve, not a questionnaire to send first.
 
 - What is the FlareLane `projectId` for this environment?
 - Can the site serve `/sw.js`, or do you need a custom `serviceWorkerPath`?
@@ -203,6 +218,9 @@ When the same web page is loaded inside a native app WebView that has FlareLane 
 
 - Visit the served site over `https://`.
 - Confirm `/sw.js` is reachable, or confirm the configured `serviceWorkerPath` resolves.
+- Confirm the console's web-push site URL matches the deployed origin exactly.
+- Confirm the subscription prompt appears and a real send arrives in the browser.
+- For iOS coverage, confirm the manifest is linked and push works from the home-screen web app.
 - Confirm `initialize()` runs once and does not repeat on route changes or re-renders.
 - Confirm the browser loads `https://cdn.flarelane.com/WebSDK.js`.
 - Confirm user ID, tags, and events update after the chosen flows.
