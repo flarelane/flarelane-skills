@@ -2,6 +2,8 @@
 
 Use this file when wiring `setUserId`, `setTags`, `trackEvent`, user attributes, segmentation, personalization, or automation data.
 
+Official docs, authoritative when this file is stale or silent: [data best practices](https://flarelane.com/ko/docs/data-integrations/data-best-practices), [events](https://flarelane.com/ko/docs/data-integrations/events), [user profile and tags](https://flarelane.com/ko/docs/data-integrations/user-attributes-tags), [user ID](https://flarelane.com/ko/docs/data-integrations/user-id). English: swap `/ko/` for `/en/`.
+
 For backend API calls, also read [server-api](server-api.md).
 
 ## Source of truth
@@ -11,6 +13,18 @@ For backend API calls, also read [server-api](server-api.md).
 - Prefer the server Track API when the backend has authoritative data or when the event must be independent of app version.
 - Use SDK calls when the value changes only in the client, the action happens only in the app or browser, or the product needs immediate client-side targeting.
 - For large backfills or periodic reconciliation, use the server Track API instead of client SDK loops.
+
+## Recommended data coverage
+
+Aim for useful coverage on the first pass rather than the literal minimum, and wire the whole set without a proposal round (see "Recommended surface" in [shared-surface](shared-surface.md)):
+
+- Sync **every supported user-attribute field the product actually holds**, not just the one the request mentioned. FlareLane interprets these natively for targeting, personalization, and email/SMS delivery; official guidance is to sync as many as possible, and route everything else to tags.
+- Do **both** sync modes: change-triggered updates *and* a one-time bulk sync of existing users through the server Track API. Change-triggered alone leaves every current user invisible until their next session, so day-one campaigns reach only a fraction of the base.
+  - Write the backfill as a runnable script or job and hand it over — do not execute it against production data yourself. It reads the customer's user table and pushes personal data to a third party at scale, so the customer runs it when they are ready. Say how to dry-run it, how it batches (100 items per Track payload), and how it resumes.
+- Include marketing consent state as a tag, so promotional and transactional sends can be separated inside FlareLane.
+- Wire a few real product events rather than none, so journeys and conversion analytics have something to run on. Start small and grow.
+- Prefer the server Track API for anything the backend already owns: it changes without an app release and covers users who never open the app.
+- Ask the user to define the synced events and tags in the console's customer-data page, so marketers see meaningful names instead of raw keys.
 
 ## Reuse existing analytics mappings
 

@@ -27,6 +27,7 @@ This skill focuses on commerce modeling and placement. For SDK bootstrap, lifecy
 
 3. Load the right references.
    - First run the best-effort freshness check in the sibling [staying-current](../flarelane-sdk-integration/references/staying-current.md) so both the skill and the FlareLane SDK version stay up to date. It is non-blocking.
+   - That file also lists the official doc pages. When this skill is stale, silent, or contradicted by the product, the docs at `https://flarelane.com/ko/docs/` (English: `/en/docs/`) win — say which page you used.
    - Always read [event-catalog](references/event-catalog.md).
    - Always read [tag-strategy](references/tag-strategy.md).
    - Read the sibling references [shared-surface](../flarelane-sdk-integration/references/shared-surface.md) and [data-modeling](../flarelane-sdk-integration/references/data-modeling.md).

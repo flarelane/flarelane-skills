@@ -38,6 +38,10 @@ Treat it as mandatory, not optional, for any Send or Track-event call reached fr
 | Send SMS                            | `POST /v1/projects/{PROJECT_ID}/sms`           | `targetType`, `targetIds`, `isAdvertisement`, `body`            |
 | Send Kakao Alimtalk                 | `POST /v1/projects/{PROJECT_ID}/alimtalk`      | `targetType`, `targetIds`, `templateId`                         |
 
+### Destructive endpoints
+
+Deletion endpoints exist in the FlareLane API but are out of scope for this skill: an over-broad or mis-parameterized delete destroys customer data irreversibly. Do not write, suggest, or scaffold them. If the product needs data deletion (account withdrawal, retention policy), point the user at the [official docs](https://flarelane.com/ko/docs/) and let them decide and implement it deliberately.
+
 ### Rate limits
 
 - A single global limit applies across all Open API requests for a project (about 50 requests per second at time of writing). Some send endpoints add their own per-endpoint throttle on top.
@@ -203,6 +207,8 @@ Interpolation example:
 7. Add tests for payload shape, auth header injection without exposing the token, error handling, and retry/idempotency behavior.
 
 ## Questions That Actually Matter
+
+Resolve these from the repo where possible. Console-side values (template IDs, sender email, the token itself) cannot be inferred — wire them as named env vars or config keys with a `TODO`, keep building, and list them in one batch at the end.
 
 - Which environment's `projectId` should this backend use?
 - What server-side secret name should hold the project token?
