@@ -10,6 +10,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 
 - pub.dev package: `flarelane_flutter`
 - Resolve the latest published pub.dev version at integration time before editing `pubspec.yaml`
+- Current deployment-target floor for the native iOS pod: **iOS 15.0+ (FlareLane 1.11.3+)**, and a lower target fails `pod install`. Before pinning, find the project's effective target: the app target's `IPHONEOS_DEPLOYMENT_TARGET` in the Xcode project, and the `platform :ios` line in `ios/Podfile` — which Flutter templates ship commented out, in which case CocoaPods falls back to the project's target, so set it explicitly. Both must clear the floor. The floor moves, so confirm it against the podspec of the version you pin; raise the project only with the user's agreement, or pin the newest release whose minimum it already meets
 - If the target repo already pins the package, keep that pin unless the user explicitly asks to upgrade or the needed API is unavailable
 - Treat Flutter as two layers: Dart API calls plus native iOS and Android setup behind the plugin
 
@@ -45,7 +46,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - `setUserId`: after login success, logout, or account switch
 - `setTags`: after profile or preference updates
 - `trackEvent`: after a business event is confirmed
-- user attributes: sync through the [server Track API](server-api.md) after the backend has stable profile fields
+- user attributes: `setUserAttributes` on SDK `1.10.0+` after stable profile fields are known; on older versions, or when the backend owns the authoritative data, sync through the [server Track API](server-api.md)
 - `displayInApp`: from a real route open or CTA handler
 - `isSubscribed`, `subscribe`, and `unsubscribe`: from onboarding or settings flows that own push preferences
 - `getDeviceId`: from support, QA, or explicit copy-ID flows
@@ -64,9 +65,9 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
    - iOS — the full list in [ios](ios.md) applies to `ios/`:
      1. Push Notifications capability on `Runner`.
      2. Background Modes with Remote notifications.
-     3. A Notification Service Extension target (suggested name `FlareLaneNotificationServiceExtension`), scheme not activated, Minimum Deployments matching `Runner`.
+     3. A Notification Service Extension target (suggested name `FlareLaneNotificationServiceExtension`), scheme not activated, Minimum Deployments matching `Runner` — both at **iOS 15.0+ (FlareLane 1.11.3+)**.
      4. App Group `group.<bundleID>.flarelane` added and enabled on **both** `Runner` and the extension.
-     5. A `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of `ios/Podfile`, then `pod install`. The plugin brings FlareLane to `Runner` itself, so the extension block is the piece that gets missed.
+     5. A `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of `ios/Podfile`, then `pod install`. `<version>` must be exactly the native FlareLane version the installed plugin pins (its podspec, or `ios/Podfile.lock` after a first `pod install`), not the latest native release: one Podfile cannot resolve two versions of the same pod, so a mismatch fails `pod install`. The plugin brings FlareLane to `Runner` itself, so the extension block is the piece that gets missed.
      6. In `ios/Runner/AppDelegate.swift` (a `FlutterAppDelegate` subclass): `override` `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)` and forward to `FlareLaneAppDelegate.shared`, set `UNUserNotificationCenter.current().delegate`, and forward the `willPresent` / `didReceive` methods to `FlareLaneNotificationCenter.shared`. Dart `initialize` owns initialization — do not also call `initWithLaunchOptions` natively.
      7. In the extension, forward `didReceive` and `serviceExtensionTimeWillExpire` to `FlareLaneNotificationServiceExtensionHelper.shared`, branching on `isFlareLaneNotification` (code sample in [ios](ios.md)).
    - Android: set `compileSdkVersion`/`targetSdkVersion` to **33 or higher** in `android/app/build.gradle` so the Android 13 permission prompt can appear, and confirm the manifest and any existing FCM service still coexist.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -156,6 +157,116 @@ for (const skillName of entries) {
       }
     }
   }
+}
+
+// Drift and leak guards across the committed skill text, in one pass.
+//
+// 1. The iOS deployment-target floor is restated in several platform files
+//    because each is read standalone. A partial update would leave some
+//    platforms pinning against a stale minimum, so every line that states a
+//    floor must use one canonical token, and every token must agree.
+// 2. Every API path named in the skill text must be one the public API
+//    reference documents. This is an allowlist on purpose: it names only
+//    published paths, so the check itself reveals nothing beyond the reference.
+// 3. Optional and machine-local: terms that must never appear in this public
+//    text. Listing them here would publish them, so the list lives outside the
+//    repository and this guard runs only where that file exists.
+const iosFloorToken = /iOS (\d+\.\d+)\+ \(FlareLane (\d+\.\d+\.\d+)\+\)/g;
+const hasIosFloorToken = /iOS \d+\.\d+\+ \(FlareLane \d+\.\d+\.\d+\+\)/;
+// "deployment target" in any spelling, carrying a version with or without a minor.
+const mentionsDeploymentTarget = /deployment[- ]target|Minimum Deployments/i;
+const carriesVersion = /\b\d+\.\d+\b|\biOS \d+\b/;
+
+// Paths published in the public API reference
+// (https://flarelane-api-docs.readme.io). Add one here only after confirming
+// it on that reference.
+const publishedApiPaths = new Set([
+  "v1/projects/{PROJECT_ID}/track",
+  "v1/projects/{PROJECT_ID}/notifications",
+  "v1/projects/{PROJECT_ID}/emails",
+  "v1/projects/{PROJECT_ID}/sms",
+  "v1/projects/{PROJECT_ID}/alimtalk",
+]);
+// A v1 path anywhere: bare, with a leading slash, or inside a full URL.
+const apiPathPattern = /\bv1\/[A-Za-z0-9{}_:/-]+/g;
+const normalizeApiPath = (raw) =>
+  raw
+    .replace(/\/+$/, "")
+    .replace(/\/(?::projectId|PROJECT_ID)(?=\/|$)/g, "/{PROJECT_ID}");
+
+const localDenylistFromEnv = process.env.FLARELANE_SKILLS_LOCAL_DENYLIST;
+const localDenylistPath =
+  localDenylistFromEnv ||
+  path.join(os.homedir(), ".flarelane-skills", "undocumented-api-surface.txt");
+let localDenylist = [];
+if (fs.existsSync(localDenylistPath)) {
+  localDenylist = fs
+    .readFileSync(localDenylistPath, "utf8")
+    .split("\n")
+    .map((line) => line.replace(/#.*/, "").trim().toLowerCase())
+    .filter(Boolean);
+} else if (localDenylistFromEnv) {
+  // Explicitly configured but missing must not pass as if it were clean.
+  fail(`local denylist not found: ${localDenylistPath}`);
+}
+
+const floorVariants = new Map();
+let floorMentions = 0;
+
+for (const mdFile of entries.flatMap((skillName) =>
+  markdownFilesIn(path.join(skillsRoot, skillName)),
+)) {
+  const rel = path.relative(repoRoot, mdFile);
+  const lines = fs.readFileSync(mdFile, "utf8").split("\n");
+
+  lines.forEach((line, index) => {
+    const where = `${rel}:${index + 1}`;
+
+    for (const [, iosVersion, sdkVersion] of line.matchAll(iosFloorToken)) {
+      floorMentions += 1;
+      const key = `iOS ${iosVersion} / FlareLane ${sdkVersion}`;
+      if (!floorVariants.has(key)) {
+        floorVariants.set(key, []);
+      }
+      floorVariants.get(key).push(where);
+    }
+    if (
+      mentionsDeploymentTarget.test(line) &&
+      carriesVersion.test(line) &&
+      !hasIosFloorToken.test(line)
+    ) {
+      fail(
+        `iOS deployment floor not in canonical form at ${where} — write it as "iOS <x.y>+ (FlareLane <a.b.c>+)"`,
+      );
+    }
+
+    for (const [raw] of line.matchAll(apiPathPattern)) {
+      const apiPath = normalizeApiPath(raw);
+      if (!publishedApiPaths.has(apiPath)) {
+        fail(
+          `API path not in the published allowlist at ${where}: ${apiPath} — confirm it on the public API reference before adding it`,
+        );
+      }
+    }
+
+    const lowered = line.toLowerCase();
+    for (const term of localDenylist) {
+      if (lowered.includes(term)) {
+        fail(`locally denied term "${term}" at ${where}`);
+      }
+    }
+  });
+}
+
+if (floorMentions === 0) {
+  fail(
+    'no iOS deployment floor found in the skills — expected the canonical token "iOS <x.y>+ (FlareLane <a.b.c>+)"',
+  );
+} else if (floorVariants.size > 1) {
+  const detail = [...floorVariants.entries()]
+    .map(([key, where]) => `  ${key} at ${where.join(", ")}`)
+    .join("\n");
+  fail(`iOS deployment floor disagrees across files:\n${detail}`);
 }
 
 // Version consistency: the repo VERSION file, the marketplace manifest version,

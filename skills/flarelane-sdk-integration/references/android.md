@@ -43,7 +43,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - `setUserId`: after login success, logout, or account switch
 - `setTags`: after stable profile or device fields are refreshed
 - `trackEvent`: after a business event is confirmed
-- user attributes: sync through the [server Track API](server-api.md) after the backend has stable profile fields
+- user attributes: `setUserAttributes` on SDK `1.10.0+` after stable profile fields are known; on older versions, or when the backend owns the authoritative data, sync through the [server Track API](server-api.md)
 - `displayInApp`: from a real screen open, route, or CTA path
 - `isSubscribed`: from a settings screen or explicit push-preference UI
 - `subscribe`: from the chosen permission prompt flow when `requestPermissionOnLaunch` is `false`

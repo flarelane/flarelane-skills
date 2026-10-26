@@ -4,7 +4,7 @@ FlareLane SDKs and this skill change over time. Run this best-effort freshness c
 
 ## This skill's version
 
-- Installed skill version: **0.5.0** (keep this in sync with the repo `VERSION` file and `.claude-plugin/marketplace.json`).
+- Installed skill version: **0.5.1** (keep this in sync with the repo `VERSION` file and `.claude-plugin/marketplace.json`).
 - Canonical source: `https://github.com/flarelane/flarelane-skills`.
 
 ## Check that the skill itself is up to date
@@ -31,7 +31,10 @@ The install versions and API details in these references reflect a snapshot and 
 
 This skill is a distilled snapshot and can fall behind the product. The official docs are the live source, so consult them when the skill is not enough — do not stay stuck on a stale contract, and do not invent behavior.
 
-Doc root: `https://flarelane.com/ko/docs/` (English: swap `/ko/` for `/en/` — same paths).
+Two sites, with different jobs. Use the right one:
+
+- **Server API questions** — endpoints, request fields, enum values, limits: the public API reference at `https://flarelane-api-docs.readme.io/reference/track`. It is the authority for the allowed API surface, and the only surface that may be called; see "Allowed API surface" in [server-api](server-api.md).
+- **Everything else** — SDK setup, credentials, console steps: doc root `https://flarelane.com/ko/docs/` (English: swap `/ko/` for `/en/` — same paths), paths below.
 
 | Topic                                | Path under the doc root                        |
 | ------------------------------------ | ---------------------------------------------- |

@@ -2,7 +2,7 @@
 
 Read this file first, then read exactly one platform file or [server-api](server-api.md).
 
-Official docs root: https://flarelane.com/ko/docs/ (English: `/en/docs/`). Treat it as the authority whenever this skill is stale, silent, or contradicted; page links are in [staying-current](staying-current.md).
+Official docs: https://flarelane.com/ko/docs/ (English: `/en/docs/`) for SDK and console topics, and the public API reference https://flarelane-api-docs.readme.io/reference/track for server API questions. Treat them as the authority whenever this skill is stale, silent, or contradicted; page links are in [staying-current](staying-current.md).
 
 For `setUserId`, tags, events, user attributes, segmentation, personalization, or automation data, also read [data-modeling](data-modeling.md).
 
@@ -15,7 +15,7 @@ This skill must remain usable after publication without access to this workspace
 - Trust the target repo first.
 - Trust the public SDK and server API contracts in this skill second.
 - Use package registry metadata only to resolve the latest published SDK version at integration time.
-- Do not depend on official-doc URLs to *start* the work, but treat the official docs as the fallback authority when this skill is stale, silent, or contradicted: `https://flarelane.com/ko/docs/` (English: `/en/docs/`). Page-by-page links are in [staying-current](staying-current.md).
+- Do not depend on official-doc URLs to *start* the work, but treat the official docs as the fallback authority when this skill is stale, silent, or contradicted: `https://flarelane.com/ko/docs/` (English: `/en/docs/`) for SDK and console topics, and the public API reference `https://flarelane-api-docs.readme.io/reference/track` for server API questions. Page-by-page links are in [staying-current](staying-current.md).
 - On web, prefer the CDN script tag plus root `sw.js`.
 - For server APIs, keep the project token in backend secrets only and do not add it to client or mobile code.
 
@@ -27,7 +27,7 @@ Treat every row below as required work for the platform being integrated, even w
 
 | Platform                  | Mandatory baseline before push can work                                                                                                                                                                                                                                       |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| iOS (native, RN, Flutter) | Push Notifications capability; Background Modes with Remote notifications; a Notification Service Extension target; App Group `group.<bundleID>.flarelane` added **and enabled on both** the main app and the extension; FlareLane added to both targets; device-token and notification-center delegate forwarding |
+| iOS (native, RN, Flutter) | Push Notifications capability; Background Modes with Remote notifications; a Notification Service Extension target; App Group `group.<bundleID>.flarelane` added **and enabled on both** the main app and the extension; FlareLane added to both targets; device-token and notification-center delegate forwarding; a deployment target of **iOS 15.0+ (FlareLane 1.11.3+)** on both targets |
 | Android                   | JitPack repository reachable; dependency in the app module; init in `Application.onCreate()`; `compileSdk`/`targetSdk` 33+ so the Android 13 notification permission prompt can appear                                                                                          |
 | React Native              | Everything in the iOS and Android rows, plus JS `initialize`. JS alone is not an integration                                                                                                                                                                                    |
 | Flutter                   | Everything in the iOS and Android rows, plus Dart `initialize`. The Dart call is half the work                                                                                                                                                                                  |
@@ -122,7 +122,7 @@ Use these only when the product flow actually needs them.
 
 ## Server API surface
 
-Server APIs are backend REST calls, not SDK public methods.
+Server APIs are backend REST calls, not SDK public methods. Only the publicly documented endpoints below may be used — see "Allowed API surface" in [server-api](server-api.md).
 
 | Goal                                   | API                                                                    |
 | -------------------------------------- | ---------------------------------------------------------------------- |
@@ -179,8 +179,9 @@ On-request scope, only when the product needs it (the delivery baseline is never
 - `setLogLevel`: before `initialize`, or as early in bootstrap as the repo allows
 - `setUserId`: immediately after auth state becomes authoritative, and clear or change it on logout or account switch
 - `setTags`: after profile, consent, locale, plan, or device traits are known or updated
-- `setUserAttributes`: only on Web SDK, after `setUserId` and after stable profile fields are known
-- mobile user attributes: sync through the server Track API when the backend has authoritative profile data
+- `setUserAttributes`: after `setUserId` and after stable profile fields are known — Web at any version, mobile on SDK `1.10.0+`
+- mobile on SDK below `1.10.0`: the client method does not exist, so sync user attributes through the server Track API instead
+- any platform or version where the backend owns the authoritative profile data: prefer the server Track API over the client method
 - `trackEvent`: after the business action completes successfully, not before optimistic UI only
 - `displayInApp`: from a stable user-visible point such as a route enter, screen open, or CTA click
 - subscribe or unsubscribe methods: from an onboarding CTA, settings screen, or explicit notification-permission control
@@ -201,7 +202,7 @@ On-request scope, only when the product needs it (the delivery baseline is never
 Rules:
 
 - For a new integration, resolve the latest published version right before editing install files.
-- Before pinning that version, confirm its minimum requirements are satisfied by the target repo: Android `minSdk`, iOS deployment target, and the repo's Gradle/AGP, CocoaPods, Node, or React Native versions. If the latest version's minimums exceed what the repo meets, pin the newest version whose minimums the repo already satisfies rather than silently forcing the customer to raise their floor. Never adopt a new major version without checking its API against this skill.
+- Before pinning that version, confirm its minimum requirements are satisfied by the target repo: Android `minSdk`, iOS deployment target (currently **iOS 15.0+ (FlareLane 1.11.3+)**), and the repo's Gradle/AGP, CocoaPods, Node, or React Native versions. If the latest version's minimums exceed what the repo meets, pin the newest version whose minimums the repo already satisfies rather than silently forcing the customer to raise their floor. Never adopt a new major version without checking its API against this skill.
 - After resolving the version, write an exact pinned version unless the target repo already has a deliberate dependency range policy.
 - This version lookup rule applies to SDK packages only; server API calls do not require an SDK version.
 - If the target project already pins a FlareLane version, keep that pin unless the user explicitly asks to upgrade or the needed API does not exist in the pinned version.

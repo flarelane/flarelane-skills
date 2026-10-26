@@ -11,6 +11,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - npm package: `@flarelane/react-native-sdk`
 - Default export: `import FlareLane from '@flarelane/react-native-sdk';` then call static methods such as `FlareLane.initialize(...)`. It is not a set of named exports.
 - Resolve the latest published npm version at integration time before editing `package.json`
+- Current deployment-target floor for the native iOS pod: **iOS 15.0+ (FlareLane 1.11.3+)**, and a lower target fails `pod install`. Before pinning, find the project's effective target: the app target's `IPHONEOS_DEPLOYMENT_TARGET` in the Xcode project, and the `platform :ios` line in `ios/Podfile` — which in React Native projects is often `min_ios_version_supported`, a helper whose value depends on the React Native version, so resolve it rather than reading it as a number. Both must clear the floor. The floor moves, so confirm it against the podspec of the version you pin; raise the project only with the user's agreement, or pin the newest release whose minimum it already meets
 - If the target repo already pins the package, keep that pin unless the user explicitly asks to upgrade or the needed API is unavailable
 - Treat React Native as two layers: JS API calls plus native iOS and Android plumbing
 
@@ -44,7 +45,7 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
 - `setUserId`: after login success, logout, or account switch
 - `setTags`: after profile or preference updates
 - `trackEvent`: after a business event is confirmed
-- user attributes: sync through the [server Track API](server-api.md) after the backend has stable profile fields
+- user attributes: `setUserAttributes` on SDK `1.10.0+` after stable profile fields are known; on older versions, or when the backend owns the authoritative data, sync through the [server Track API](server-api.md)
 - `displayInApp`: from a real screen open or CTA handler
 - `isSubscribed`, `subscribe`, and `unsubscribe`: from onboarding or settings flows that own push preferences
 - `getDeviceId`: from support, QA, or explicit copy-ID flows
@@ -62,9 +63,9 @@ For user ID, events, tags, or user attributes, also read [data-modeling](data-mo
    - iOS — the full list in [ios](ios.md) applies to `ios/`, including the parts a JS-only mindset skips:
      1. Push Notifications capability.
      2. Background Modes with Remote notifications.
-     3. A Notification Service Extension target (suggested name `FlareLaneNotificationServiceExtension`), scheme not activated, Minimum Deployments matching the app target.
+     3. A Notification Service Extension target (suggested name `FlareLaneNotificationServiceExtension`), scheme not activated, Minimum Deployments matching the app target — both at **iOS 15.0+ (FlareLane 1.11.3+)**.
      4. App Group `group.<bundleID>.flarelane` added and enabled on **both** the app target and the extension.
-     5. A `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of `ios/Podfile`, then `pod install`. The RN main target gets FlareLane through autolinking, so this extension block is the piece that is easy to forget.
+     5. A `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of `ios/Podfile`, then `pod install`. `<version>` must be exactly the native FlareLane version the installed RN package pins (its podspec, or `ios/Podfile.lock` after a first `pod install`), not the latest native release: one Podfile cannot resolve two versions of the same pod, so a mismatch fails `pod install`. The RN main target gets FlareLane through autolinking, so this extension block is the piece that is easy to forget.
      6. In `AppDelegate`: forward `didRegisterForRemoteNotificationsWithDeviceToken` to `FlareLaneAppDelegate.shared`, and forward the `UNUserNotificationCenter` `willPresent` / `didReceive` methods to `FlareLaneNotificationCenter.shared`. RN does **not** call `initWithLaunchOptions` natively — JS `initialize` owns that.
      7. In the extension, forward `didReceive` and `serviceExtensionTimeWillExpire` to `FlareLaneNotificationServiceExtensionHelper.shared`, branching on `isFlareLaneNotification` (code sample in [ios](ios.md)).
    - Android: confirm an `Application` class initializes the SDK (autolinking covers the dependency), and set `compileSdkVersion`/`targetSdkVersion` to **33 or higher** in `android/app/build.gradle` so the Android 13 notification permission prompt can appear at all.

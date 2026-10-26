@@ -18,6 +18,7 @@ Most of this lives in `project.pbxproj` and entitlements, not in Swift. Plan for
   - CocoaPods: package `FlareLane` (`pod 'FlareLane'`).
   - Swift Package Manager: `https://github.com/flarelane/FlareLane-iOS-SDK`, product `FlareLane` for the main target and product `FlareLaneExtension` for a Notification Service Extension target.
 - Resolve the latest published version at integration time before editing `Podfile` or `Package.swift`
+- Current deployment-target floor: **iOS 15.0+ (FlareLane 1.11.3+)**, raised from 12.0, and it applies to the app and the extension target alike. The floor moves, so confirm it against the podspec or `Package.swift` of the version you actually pin rather than trusting this line. If the project targets lower, do not raise the customer's floor silently: get their agreement, or pin the newest FlareLane release whose minimum the project already meets
 - If the target repo already pins `FlareLane` or already has a `Podfile.lock`/`Package.resolved`, keep that resolved version unless the user explicitly asks to upgrade or the needed API is unavailable
 - CocoaPods requires dynamic frameworks: `use_frameworks!` must be at the top of the `Podfile`. If it is absent, add it — and if the repo deliberately builds static (`use_frameworks! :linkage => :static`, `use_modular_headers!`, or another pod that requires static linking), raise the conflict with the user instead of flipping it silently.
 - Add FlareLane to **both** the main target and the extension target — CocoaPods needs its own `target '<ExtensionName>' do pod 'FlareLane', '<version>' end` block at the bottom of the `Podfile`; SPM needs product `FlareLane` on the app target and `FlareLaneExtension` on the extension target.
@@ -73,7 +74,7 @@ Supporting delegate forwarding:
 - `setUserId`: after login success, logout, or account switch
 - `setTags`: after stable profile or preference updates
 - `trackEvent`: after a business event is confirmed
-- user attributes: sync through the [server Track API](server-api.md) after the backend has stable profile fields
+- user attributes: `setUserAttributes` on SDK `1.10.0+` after stable profile fields are known; on older versions, or when the backend owns the authoritative data, sync through the [server Track API](server-api.md)
 - `displayInApp`: from a real screen lifecycle such as `viewDidAppear`, SwiftUI `onAppear`, or a CTA handler, while guarding against repeated spam
 - `isSubscribed`, `subscribe`, and `unsubscribe`: from an onboarding CTA or settings screen that owns notification preferences
 - `getDeviceId`: from support, QA, or explicit copy-ID flows
@@ -85,7 +86,7 @@ Steps 1–7 are the mandatory baseline. None of them is conditional on the reque
 
 1. **Push Notifications capability** on the main app target.
 2. **Background Modes → Remote notifications** on the main app target.
-3. **Notification Service Extension target.** Create it (or reuse an existing one) — do not treat it as a rich-media-only extra: without it, image notifications never render, and the official setup flow includes it in every iOS integration. Suggested product name `FlareLaneNotificationServiceExtension`; do not activate its scheme; set its **Minimum Deployments to the main app target's** deployment target.
+3. **Notification Service Extension target.** Create it (or reuse an existing one) — do not treat it as a rich-media-only extra: without it, image notifications never render, and the official setup flow includes it in every iOS integration. Suggested product name `FlareLaneNotificationServiceExtension`; do not activate its scheme; set its **Minimum Deployments to the main app target's** deployment target, with both at **iOS 15.0+ (FlareLane 1.11.3+)**.
 4. **App Group `group.<bundleID>.flarelane`**, where `<bundleID>` is the main app's Bundle Identifier, added *and* toggled on for **both** the main app target and the extension target. Added but unchecked behaves exactly like missing.
 5. **FlareLane on both targets** (`Podfile` blocks or SPM `FlareLane` + `FlareLaneExtension`), then `pod install`.
 6. **Initialize** with `initWithLaunchOptions` in `application(_:didFinishLaunchingWithOptions:)`, and on SwiftUI-only apps add the small `AppDelegate` + `@UIApplicationDelegateAdaptor` bridge first.

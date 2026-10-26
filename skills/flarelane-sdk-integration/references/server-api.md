@@ -4,6 +4,18 @@ Use this file when adding backend calls to FlareLane Track or Send APIs.
 
 Server API is not a client SDK public method surface. It belongs in backend services, API clients, jobs, or workers, never in browser, mobile, React Native JS bundles, or Flutter client code.
 
+## Allowed API surface
+
+The public API reference is the allowed surface, and the authority for every API question: <https://flarelane-api-docs.readme.io/reference/track>. Never infer, guess, or construct an endpoint, parameter, or enum value it does not document — including one that happens to work.
+
+The "API Surface" table below is a deliberate **subset**: the operations this skill carries contracts for. It is not the whole reference.
+
+- One of those operations: use the table, and confirm the contract on the reference page before writing the call.
+- Something else the reference documents (notification history, the email or SMS unsubscriber endpoints): follow that reference page and say which page you used. This skill being silent is not a prohibition. The unsubscriber endpoints change marketing consent, though: **Delete Unsubscribers re-subscribes someone who opted out.** Call it only on that person's own explicit opt-in, never from a bulk sync of the product's own flags — those can miss opt-outs made outside the product, such as from an unsubscribe link in a message, and re-subscribing them resumes advertising to people who said no.
+- Something the reference does not document: stop and say so. Do not build it.
+
+Deletion is the one documented case this skill deliberately refuses — see "Destructive endpoints" below.
+
 ## Credentials
 
 - Base URL: `https://api.flarelane.com`
@@ -40,13 +52,15 @@ Treat it as mandatory, not optional, for any Send or Track-event call reached fr
 
 ### Destructive endpoints
 
-Deletion endpoints exist in the FlareLane API but are out of scope for this skill: an over-broad or mis-parameterized delete destroys customer data irreversibly. Do not write, suggest, or scaffold them. If the product needs data deletion (account withdrawal, retention policy), point the user at the [official docs](https://flarelane.com/ko/docs/) and let them decide and implement it deliberately.
+Deletion endpoints exist in the FlareLane API but are out of scope for this skill: an over-broad or mis-parameterized delete destroys customer data irreversibly. Do not write, suggest, or scaffold them. If the product needs data deletion (account withdrawal, retention policy), point the user at the [public API reference](https://flarelane-api-docs.readme.io/reference/track) and let them decide and implement it deliberately.
 
 ### Rate limits
 
-- A single global limit applies across all Open API requests for a project (about 50 requests per second at time of writing). Some send endpoints add their own per-endpoint throttle on top.
-- Treat these numbers as current server behavior that can change, not a fixed contract. Design for `429` responses with backoff, and route high-volume work through a queue so the limit is enforced in one place.
-- Track accepts an empty body but then writes nothing, so always send at least one of `events`, `tags`, or `userAttributes`.
+- The reference publishes roughly 100 requests per second on the endpoints that state a limit, and some pages state none at all. Treat any published number as approximate and changeable, never as a contract you may run at.
+- Size the client **below** whatever is published rather than at it, leaving headroom for a limit that is lower than documented, tightened later, or shared with the project's other traffic.
+- Handle `429` with backoff and retry regardless of the number, so the implementation stays correct if the real ceiling is lower than this file says. The backoff is the guarantee; the number is only a starting point.
+- Route high-volume work through a queue so the ceiling, the backoff, and the retry budget are enforced in one place.
+- Always send at least one of `events`, `tags`, or `userAttributes` on a Track call; one carrying none of them does nothing.
 
 ## Track API
 
@@ -129,15 +143,13 @@ Use for server-triggered push notifications.
 
 Required:
 
-- `targetType`: `userId`, `segment`, `device`, or `userIdCsvUrl`
-- `targetIds`: max 100 for `userId`, max 5 for `segment`, max 100 for `device`
+- `targetType`: `userId`, `segment`, or `device`
+- `targetIds`: documented maxima are 100 for `userId`, 5 for `segment`, 100 for `device`. A longer `userId` or `device` list may be split into batches no larger than the maximum, because those IDs are disjoint; handle a rejected batch instead of assuming it fits. **Never split `segment` targets across sends** — anyone in more than one segment would get the message once per send. If a send needs more segments than the maximum, stop and ask how to target it
 - `body` or `templateId`
 
-Optional fields include `title`, `url`, `imageUrl`, `data`, `ignoreFrequencyCapping`, `ttl`, `targetPlatforms`, `campaignName`, and `buttons` (max 2).
+Optional fields include `title`, `url`, `imageUrl`, `data`, `ignoreFrequencyCapping`, `ttl`, `targetPlatforms`, and `buttons` (max 2).
 
 Use `url` for HTTPS web URLs or app deep links. Use `targetPlatforms` when a send must be limited to platforms such as `android`, `ios`, `webDesktop`, or `webMobile`.
-
-`flarelane_save_sent_history` is not a top-level field. It is a key inside the `data` object: set `data.flarelane_save_sent_history` to the string `"false"` to skip saving send history for that notification.
 
 ## Send Email
 
@@ -151,7 +163,7 @@ Required:
 - `title`
 - `templateId`
 
-Optional fields include `campaignName`, `data`, and `interpolations`.
+Optional fields include `campaignName` and `interpolations`.
 
 ## Send SMS
 
@@ -162,9 +174,9 @@ Required:
 - `targetType`: `userId` or `phoneNumber`
 - `targetIds`: max 100; phone numbers must use E.164 format such as `+821011112222`
 - `isAdvertisement`
-- `body`: max 2000 bytes, measured in EUC-KR encoding after Liquid interpolation tags are stripped, so Korean characters count as 2 bytes
+- `body`: documented maximum 2000 bytes. Multibyte characters such as Korean cost more than one byte each, so budget by encoded bytes with margin rather than by character count
 
-Optional fields include `campaignName`, `title` with max 40 bytes (also EUC-KR), and `data`.
+Optional fields include `campaignName`, `title` with max 40 bytes, and `data`.
 
 ## Send Kakao Alimtalk
 
